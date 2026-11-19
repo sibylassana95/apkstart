@@ -26,7 +26,7 @@ Cette version est consacrée à la localisation française : l'interface, les me
 ## 4. Recherche et documentation
 
 - La recherche du panneau de paramètres reconnaît les mots-clés **dans les deux langues** (par exemple « paysage », « 横屏 » ou « landscape »).
-- `README.fr.md` a été ajouté, avec un lien depuis le README principal.
+- Le `README.md` principal est dorénavant en français ; la version chinoise est conservée dans `README.zh-CN.md`, avec un lien croisé entre les deux.
 - Les presets de keymap suivent désormais la langue à chaud, sans redémarrage.
 
 ## 5. Périmètre et compatibilité

@@ -1,5 +1,6 @@
 # ApkStart
-[Français](README.fr.md)
+
+[简体中文](README.zh-CN.md)
 
 <p align="center"><img src="docs/images/logo.png" alt="ApkStart Logo" width="160" /></p>
 
@@ -8,360 +9,327 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D6.svg)](#)
 
-**Windows 上的安卓应用运行器 —— 让安卓应用像 Windows 原生软件一样被安装和使用。**
-注：本项目为早期版本，作者自娱自乐产物，所有修改都是作者下班和休息日在处理，开源免费，不插广告，暂时也不是很好用，没有找过营销号推广，无妄之灾。
+**Un lanceur d'applications Android pour Windows — installez et utilisez les applications Android comme des logiciels Windows natifs.**
+Remarque : ce projet est encore à un stade précoce, un passe-temps de son auteur. Toutes les modifications sont effectuées après le travail et les week-ends. Open source et gratuit, sans publicité, pas encore très pratique, et sans aucune campagne de promotion — à prendre pour ce que c'est, sans attente démesurée.
 
-- 🖱️ **双击 .apk 即安装**：注册 .apk 文件关联后，在资源管理器里双击 APK，自动解析 → 安装 → 生成桌面图标，全程无需打开任何模拟器界面。
-- 🧩 **每个应用一个桌面图标**：图标从 APK 内部离线提取并转为多尺寸 ICO，双击桌面图标 = 直接启动该应用，与打开一个原生 Windows 软件的体验一致。
-- 🪟 **应用就是一个窗口**：运行时以**带窗口**模式启动（无头模式下 Android 不出 VSYNC，应用进程活着但屏幕上是空的），ApkStart 把这块窗口改标题、换真实应用图标、按竖屏比例摆好位置，就是一个独立应用窗口；**全屏**铺满屏幕高度并居中，**窗口模式**可自由拖动缩放且按应用记忆尺寸。
-- 🔍 **能被 Windows 搜到**：安装后同时创建桌面 + 开始菜单（`程序\ApkStart\`）快捷方式，按应用名在开始菜单搜索即可直达，任务栏按应用分组。
-- 📁 **数据互通**：`%USERPROFILE%\ApkStartShared` ↔ 安卓内 `/sdcard/ApkStartShared` 持续双向同步，安卓应用存下的文件直接出现在本机。
-- 🪶 **极致轻量**：壳层本身零第三方依赖（连 ZIP / PNG / ICO / AXML 解析都是手写的），运行时按需拉起，空闲自动回收；也可以完全复用你机器上已有的安卓运行时，额外占用为零。
+- 🖱️ **Double-clic sur un .apk = installation** : après enregistrement de l'association de fichiers .apk, un double-clic sur un APK dans l'Explorateur déclenche automatiquement l'analyse → l'installation → la création d'une icône sur le bureau, sans jamais ouvrir d'interface d'émulateur.
+- 🧩 **Une icône de bureau par application** : l'icône est extraite hors ligne de l'APK, convertie en ICO multi-tailles, et un double-clic sur l'icône du bureau lance directement l'application — exactement comme avec un logiciel Windows natif.
+- 🪟 **L'application est une fenêtre** : l'exécution se fait en mode **avec fenêtre** (en mode sans tête, Android ne produit pas de VSYNC : le processus de l'application reste vivant mais l'écran est vide). ApkStart renomme cette fenêtre, remplace son icône par la vraie icône de l'application, la positionne selon le ratio portrait : c'est une fenêtre d'application autonome. Le **mode plein écran** remplit la hauteur de l'écran et est centré ; le **mode fenêtre** peut être déplacé et redimensionné librement, avec mémorisation des dimensions par application.
+- 🔍 **Recherchable depuis Windows** : après l'installation, des raccourcis sont créés à la fois sur le bureau et dans le menu Démarrer (`Programmes\ApkStart\`) ; une recherche par nom d'application dans le menu Démarrer y mène directement, et les boutons de la barre des tâches sont regroupés par application.
+- 📁 **Données partagées** : `%USERPROFILE%\ApkStartShared` ↔ `/sdcard/ApkStartShared` dans Android sont synchronisés en continu dans les deux sens ; les fichiers enregistrés par une application Android apparaissent directement sur la machine.
+- 🪶 **Ultra-léger** : la couche elle-même n'a aucune dépendance tierce (même l'analyse ZIP / PNG / ICO / AXML est écrite à la main) ; le runtime est lancé à la demande et libéré automatiquement à l'intervalle. Il est aussi possible de réutiliser entièrement un runtime Android déjà présent sur votre machine, pour une empreinte supplémentaire nulle.
 
-![主界面](docs/images/app.png)
+![Interface principale](docs/images/app.png)
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  桌面图标（真实应用图标 .lnk）                              │
-│      │  双击                                               │
-│      ▼                                                     │
-│  ApkStart.exe --launch <包名>                              │
-│      │  运行时未启动？→ 自动拉起（Android Emulator + API34）│
-│      ▼                                                     │
-│  按系统解析出的 LAUNCHER 入口启动（不是 APK 里的主 Activity）│
-│      │  存活观察 18 秒，闪退自动重试 / 重置数据 / 补权限     │
-│      ▼                                                     │
-│  模拟器窗口 = 应用窗口（改标题、换图标、竖屏比例、全屏居中） │
-└────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│  Icône du bureau (vraie icône d'application .lnk)                  │
+│      │  Double-clic                                                │
+│      ▼                                                             │
+│  ApkStart.exe --launch <nom de paquet>                             │
+│      │  Runtime éteint ? → relance auto (Android Emulator + API34) │
+│      ▼                                                             │
+│  Lancement via le point d'entrée LAUNCHER résolu par le système    │
+│  (pas l'Activity principale de l'APK)                              │
+│      │  Veille 18 s, relance auto / reset données / droits         │
+│      ▼                                                             │
+│  Fenêtre émulateur = fenêtre appli (titre, icône, ratio portrait,  │
+│  plein écran centré)                                               │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-## 下载即用（不想编译）
+## Télécharger et utiliser (sans compiler)
 
-两个源内容一致，国内建议用 Gitee：
+Les deux dépôts ont un contenu identique ; en Chine, privilégiez Gitee :
 
-- GitHub：[github.com/RoutineMiku/apkstart/releases](https://github.com/RoutineMiku/apkstart/releases)
-- Gitee：[gitee.com/daily-miku/apkstart/releases](https://gitee.com/daily-miku/apkstart/releases)（国内直连快得多）
+- GitHub : [github.com/RoutineMiku/apkstart/releases](https://github.com/RoutineMiku/apkstart/releases)
+- Gitee : [gitee.com/daily-miku/apkstart/releases](https://gitee.com/daily-miku/apkstart/releases) (beaucoup plus rapide en Chine)
 
-安装包（三种形态，内容与版本号完全一致）：
+Paquets d'installation (trois formats, contenu et numéro de version rigoureusement identiques) :
 
-| 形态 | 文件名 | 何时选它 |
+| Format | Nom de fichier | Quand le choisir |
 |---|---|---|
-| 商店版 | `ApkStart_<四段版本>_x64.msix` | 从 Microsoft Store 装。内置完整运行时，装完不联网；自更新交给商店 |
-| 完整便携版 | `ApkStart-v*-win64-full.zip`（约 830 MB，解压 ~1.3 GB） | **不想装、也不想等下载**：解压即用，运行时（模拟器 + 系统镜像）全在包里 |
-| 安装版 | `ApkStart-v*-Setup.exe`（约 1.3 GB） | 想要桌面/开始菜单快捷方式、卸载项 |
-| 轻量便携版 | `ApkStart-v*-win64-portable.zip`（96 MiB，解压 ~227 MB） | 只想先试试，首次启动再联网下载运行时 |
+| Version Store | `ApkStart_<version en quatre segments>_x64.msix` | Installer depuis Microsoft Store. Runtime complet intégré, aucune connexion nécessaire après l'installation ; mises à jour gérées par le Store |
+| Version portable complète | `ApkStart-v*-win64-full.zip` (~830 Mo, ~1,3 Go une fois décompressé) | **Pas envie d'installer ni d'attendre un téléchargement** : prêt à l'emploi après décompression, runtime (émulateur + image système) entièrement inclus |
+| Version installateur | `ApkStart-v*-Setup.exe` (~1,3 Go) | Pour disposer de raccourcis bureau/menu Démarrer et d'une entrée de désinstallation |
+| Version portable légère | `ApkStart-v*-win64-portable.zip` (96 Mio, ~227 Mo décompressé) | Pour essayer d'abord : le runtime n'est téléchargé qu'au premier lancement |
 
-> 所有形态的 `ApkStart.exe` 都写入了**品牌图标 + 版本资源**（FileDescription = `ApkStart 安卓应用运行器`，
-> CompanyName = `RoutineMiku`，版本与 `package.json` 同步），不再是 Electron 的默认图标和 `33.x` 版本号。
-> 自己从源码打包时：`npm run pack`（轻量）/ `npm run pack:full`（完整）/ `npm run build:msix`（商店包）。
+> Tous les formats de `ApkStart.exe` intègrent **une icône de marque + des ressources de version** (FileDescription = `ApkStart - Lanceur d'applications Android`,
+> CompanyName = `RoutineMiku`, version synchronisée avec `package.json`) ; ce n'est plus l'icône par défaut d'Electron ni son numéro de version `33.x`.
+> Lors d'un empaquetage depuis les sources : `npm run pack` (léger) / `npm run pack:full` (complet) / `npm run build:msix` (paquet Store).
 
-### 画面铺满是怎么做到的
+### Comment le rendu remplit-il tout l'écran
 
-模拟器的**物理面板方向**（`hw.lcd.width/height`）就是画面的真实形状。面板方向和应用自己声明的
-`screenOrientation` 不一致时，Android 只会给应用一个信箱式的中间窄条 —— 两侧补黑，换窗口大小、
-改 `wm size`、改 letterbox 样式都填不满（这套组合逐项试过，见 `src/core/apk.js` 的注释）。
+L'**orientation physique du panel** de l'émulateur (`hw.lcd.width/height`) est la véritable forme de l'image. Quand l'orientation du panel ne correspond pas au `screenOrientation` déclaré par l'application, Android ne lui donne qu'une fine bande centrale en letterbox — avec des barres noires sur les côtés ; ni le redimensionnement de la fenêtre, ni `wm size`, ni la modification du style du letterbox ne permettent de remplir l'écran (cette combinaison a été testée point par point, voir les commentaires dans `src/core/apk.js`).
 
-所以 ApkStart 在**安装 APK 时离线解析 `AndroidManifest.xml`**，统计出这个应用天然是横屏还是竖屏
-（启动 Activity 加权；全 `sensor` / `fullSensor` 的会在首次运行后再问安卓要一次实际值），存进
-`apps.json`，启动时按它选面板：
+ApkStart **analyse donc `AndroidManifest.xml` hors ligne au moment de l'installation de l'APK**, détermine si l'application est naturellement paysage ou portrait (en pondérant l'Activity de lancement ; pour les orientations `sensor` / `fullSensor`, une valeur réelle est redemandée à Android après le premier lancement), l'enregistre dans `apps.json`, puis choisit le panel au démarrage en conséquence :
 
-- 红果短剧这类竖屏应用 → 竖屏面板 720×1280，正立、铺满、density 190（sw606dp）同时给出平板排版；
-- 墨读这类横屏应用 → 横屏面板 1280×720，正立、铺满。
+- Une application portrait comme Hongguo Free Short Drama → panel portrait 720×1280, droit, plein écran, density 190 (sw606dp), ce qui fournit aussi une mise en page tablette ;
+- Une application paysage comme Moku Reader → panel paysage 1280×720, droit, plein écran.
 
-只有「面板方向和应用方向不一致」的那一次才重启运行时（约 40 秒，标题栏会给出提示），
-之后同方向的应用都是秒进。标题栏的旋转按钮会把这个应用的方向**记住**（其它应用不受影响），
-设置 → 应用窗口 → 屏幕方向可以改成「强制横屏 / 强制竖屏」。
+Seul le cas « orientation du panel ≠ orientation de l'application » entraîne un redémarrage du runtime (environ 40 secondes, avec une indication dans la barre de titre) ; ensuite, les applications de même orientation démarrent en un instant. Le bouton de rotation de la barre de titre **mémorise** l'orientation pour cette application (les autres ne sont pas affectées), et Réglages → Fenêtre d'application → Orientation de l'écran permet de choisir « Forcer le paysage / Forcer le portrait ».
 
-排版由「逻辑密度」决定：720 宽按 190dpi 算等于 **606dp**，正好越过 Android 的 600dp 平板断点，
-红果短剧的双列剧集页、设置页分栏都只在这个密度下出现（镜像默认 320dpi 只有 360dp，是手机排版）。
-这就是设置里的「平板排版」开关，默认打开；关掉会回到手机排版。
+La mise en page est déterminée par la **densité logique** : 720 pixels de large à 190 dpi donnent **606 dp**, ce qui dépasse juste le seuil tablette de 600 dp d'Android ; la page des épisodes en deux colonnes et les réglages en deux panneaux de Hongguo n'apparaissent qu'à cette densité (le défaut du miroir, 320 dpi, ne donne que 360 dp, soit une mise en page de téléphone). C'est l'interrupteur « Mise en page tablette » des réglages, activé par défaut ; le désactiver revient à la mise en page mobile.
 
-### 在线更新（自动选较快的源）
+### Mise à jour en ligne (choix automatique de la source la plus rapide)
 
-设置 → **软件更新** → 「检查更新」，或托盘右键 → 「检查更新」。发现新版本后点「立即更新」即可。
+Réglages → **Mise à jour logicielle** → « Vérifier les mises à jour », ou clic droit sur l'icône de la barre d'état → « Vérifier les mises à jour ». Une fois une nouvelle version trouvée, cliquez sur « Mettre à jour maintenant ».
 
-- 安装版下载 `ApkStart-v*-Setup.exe` 静默安装；
-- 轻量版下载 `ApkStart-v*-win64-portable.zip`，解压后覆盖**程序目录**——运行时目录（`%APPDATA%\apkstart\runtime`）、已装应用与快照都不在程序目录里，所以更新不会丢东西；
-- 替换动作由一段独立 PowerShell 脚本完成（等主进程退出 → 覆盖 → 重新拉起），**不会出现「请手动关闭程序」的弹窗**，也不会在桌面上残留模拟器窗口。
+- La version installée télécharge `ApkStart-v*-Setup.exe` et l'installe silencieusement ;
+- La version légère télécharge `ApkStart-v*-win64-portable.zip`, décompresse et remplace le **répertoire du programme** — le répertoire du runtime (`%APPDATA%\apkstart\runtime`), les applications installées et les snapshots ne se trouvent pas dans le répertoire du programme : la mise à jour ne perd donc rien ;
+- Le remplacement est réalisé par un script PowerShell autonome (attendre la sortie du processus principal → écraser → relancer) : **pas de fenêtre « veuillez fermer le programme manuellement »**, ni de fenêtre d'émulateur résiduelle sur le bureau.
 
-更新链路不是死连 GitHub，而是**每次现测现选**：
+La chaîne de mise à jour n'est pas liée en dur à GitHub : la source est **testée et choisie à chaque fois** :
 
-1. 同时问 GitHub 与 Gitee 的最新版本，取版本号更高的那个（一个源超时/被墙不影响另一个）；
-2. 把「源站直连 / Gitee 同名资产 / 镜像前缀」列成候选，每个地址真下 256KB 测速，
-   只算「收到首字节之后」的吞吐（握手时间不计入，否则高延迟大带宽的源会被误判成慢）；
-3. 按实测速度排序，用最快的那条分块并行下载；失败自动换下一条。
+1. Interroger simultanément GitHub et Gitee pour connaître la dernière version, et retenir le numéro le plus élevé (un source en timeout ou bloquée n'affecte pas l'autre) ;
+2. Établir une liste de candidats — « lien direct vers le site d'origine / asset homonyme sur Gitee / préfixe de miroir » — et, pour chaque adresse, télécharger réellement 256 Ko afin de mesurer la vitesse, en ne comptant que le débit **après réception du premier octet** (le temps du handshake est exclu, sinon une source à forte latence et grande bande passante serait classée à tort comme lente) ;
+3. Trier par vitesse mesurée, puis télécharger par blocs en parallèle via la source la plus rapide ; en cas d'échec, passer automatiquement à la suivante.
 
-设置里的「下载与更新源」可以强制只用某一边（企业网络只放行一个域名时用），
-也可以关掉公共加速镜像、或改用自建镜像前缀。Gitee 附件单文件上限 100MB，
-便携包换用 7-Zip 的 deflate（`-mx=9`）压缩后是 **95.0MB**，所以 Gitee 上也是
-一个能直接双击解压的整包（以前要切成 `.part1/.part2` 手工拼接，那版已经废弃）。
-两个源的同名包体积并不完全一样，客户端按测速结果只挑一个源下完，不会混拼。
+L'option « Sources de téléchargement et de mise à jour » des réglages permet de forcer l'usage d'un seul côté (utile sur les réseaux d'entreprise qui n'autorisent qu'un seul domaine), de désactiver le miroir d'accélération public ou d'utiliser un préfixe de miroir personnalisé. La limite de Gitee est de 100 Mo par fichier ; le paquet portable, compressé avec le deflate de 7-Zip (`-mx=9`), fait **95,0 Mo** : sur Gitee également, c'est un paquet unique qu'il suffit de décompresser par double-clic (auparavant, il fallait le découper en `.part1/.part2` et les assembler manuellement ; cette version est abandonnée). Les paquets homonymes des deux dépôts n'ont pas exactement la même taille ; le client choisit une seule source d'après les résultats du test et ne mélange jamais les morceaux.
 
-两个仓库都是公开的，Gitee 的发行版列表匿名就能读，不需要填任何 token。
-（只有在 Gitee 限流返回 403/429 时，才需要在设置里填一个只读 token 提高额度。）
+Les deux dépôts sont publics ; la liste des versions de Gitee est lisible de façon anonyme, sans aucun token. (Un token en lecture seule n'est à saisir dans les réglages que si Gitee renvoie 403/429 à cause d'une limitation de débit.)
 
+**Comportements par défaut, prêts à l'emploi** (inutile d'aller chercher dans les réglages) :
 
-**开箱即有的默认行为**（不用去设置里找）：
+- Démarrage automatique avec Windows, présence permanente dans la barre d'état ; un double-clic sur l'icône du bureau mène directement dans l'application.
+- Après l'installation d'un APK, création automatique de **deux raccourcis : bureau + menu Démarrer** ; la recherche Windows trouve directement le nom de l'application ; les raccourcis oubliés par les anciennes versions sont ajoutés automatiquement au démarrage.
+- La fenêtre d'application est rendue nativement (pas d'une projection d'écran) : le **mode plein écran** remplit la hauteur de l'écran et est centré, sans déformer le ratio du téléphone ; le **mode fenêtre** reste en portrait, se déplace et se redimensionne librement, avec une taille mémorisée séparément pour chaque application. Bascule possible à tout moment avec `F11` ou par un clic droit sur l'icône de la barre d'état.
+- Les autorisations d'exécution demandées par l'application sont accordées automatiquement après l'installation, sans blocage sur une boîte de dialogue système ; en cas de crash, l'application est relancée automatiquement et ses données sont réinitialisées si nécessaire.
+- **Le réseau utilise directement celui de l'hôte** : côté Android, le trafic passe par le NAT utilisateur de QEMU et sort par la carte réseau physique de l'hôte ; **aucune carte réseau ni commutateur virtuel n'est créé sous Windows** (aucun pilote à installer, aucun adaptateur réseau supplémentaire). Aucun téléchargement réseau ni modification des paramètres réseau n'est requis.
 
-- 开机自动启动，常驻托盘；双击桌面图标直接进应用。
-- 安装 APK 后自动创建**桌面 + 开始菜单**两份快捷方式，Windows 搜索能直接搜到应用名；老版本漏建的会在启动时自动补齐。
-- 应用窗口是原生渲染（非投屏）：**全屏**铺满屏幕高度并居中、保持手机比例不变形；**窗口模式**保持竖屏，可自由拖动缩放，每个应用的尺寸单独记忆。随时按 `F11` 或右键托盘切换。
-- 安装后自动授予应用申请的运行时权限，不会卡在系统授权框；应用闪退会自动重试、必要时重置应用数据后再拉起。
-- **网络直接用主机的网络**：安卓侧走 QEMU 用户态 NAT，出口复用主机的物理网卡，**不会在 Windows 上创建任何虚拟网卡 / 虚拟交换机**（不需要装驱动、也不多一个网络适配器）。不需要联网下载、不需要改任何网络设置。
+## Page de réglages : bien classée, et consultable par recherche
 
-## 设置页：分好类，还能搜
+Les réglages se multipliant, depuis la version 0.6.0 la page est répartie en huit catégories, avec une navigation en colonne à gauche :
 
-设置项越来越多，所以从 0.6.0 起设置页按用途分成八类，左侧一列导航：
-
-| 分类 | 装了什么 |
+| Catégorie | Ce qui s'y trouve |
 |---|---|
-| 常用与安装 | 运行时与环境、一键完成、开机自启、磁盘占用与清理 |
-| 显示与窗口 | 显示模式、自动全屏、屏幕方向、镜像自动旋转、平板排版、窗口承载方式、安卓系统设置 |
-| 操作与输入 | 鼠标键位、键盘映射（游戏手柄） |
-| 性能与资源 | 资源策略、画质、数据分区、系统语言、中文输入法、快照、开机预热、高级参数 |
-| 网络与下载 | 更新与下载源、公共加速镜像、下载线程数 |
-| 诊断与修复 | 本机体检 · 自动配置、驱动 · 兼容补丁、自动检测 · 智能诊断 |
-| 集成与文件 | 桌面与应用、文件互通、系统集成 |
-| 更新与关于 | 软件更新、关于 |
+| Usage courant et installation | Runtime et environnement, configuration en un clic, démarrage avec Windows, empreinte disque et nettoyage |
+| Affichage et fenêtre | Mode d'affichage, plein écran automatique, orientation de l'écran, rotation automatique du miroir, mise en page tablette, mode d'hébergement de la fenêtre, paramètres du système Android |
+| Opérations et saisie | Touches de la souris, mappage clavier (manette de jeu) |
+| Performance et ressources | Stratégie de ressources, qualité d'image, partition de données, langue du système, clavier chinois, snapshots, préchauffage au démarrage, paramètres avancés |
+| Réseau et téléchargement | Sources de mise à jour et de téléchargement, miroir d'accélération public, nombre de threads de téléchargement |
+| Diagnostic et réparation | Bilan de santé de la machine · configuration automatique, pilotes · correctifs de compatibilité, détection automatique · diagnostic intelligent |
+| Intégration et fichiers | Bureau et applications, partage de fichiers, intégration système |
+| Mise à jour et à propos | Mise à jour logicielle, à propos |
 
-顶部还有一个搜索框：输入「横屏」「内存」「代理」等关键词，命中项**跨分类**显示，
-不会出现「搜到了却看不见」。上次停留的分类会记住，下次打开就在原地。
+Une zone de recherche se trouve aussi en haut : saisissez des mots-clés comme « paysage », « mémoire » ou « proxy », et les résultats correspondants s'affichent **toutes catégories confondues** — pas de « trouvé mais invisible ». La dernière catégorie consultée est mémorisée et rouverte à la prochaine visite.
 
-## 自动检测（自动 debug）
+## Détection automatique (debug automatique)
 
-设置 → **诊断与修复** → 「自动检测 · 智能诊断」。后台定时把机器查一遍，出问题按分类列出来：
+Réglages → **Diagnostic et réparation** → « Détection automatique · Diagnostic intelligent ». En arrière-plan, la machine est analysée périodiquement et les problèmes sont listés par catégorie :
 
-- **运行时**：上次启动失败的真实原因、引导卡死、残留锁文件、孤儿模拟器进程、快照空壳、没有硬件加速
-- **设备连接**：adb 未授权（安卓弹了「允许 USB 调试吗」没人点）、offline、运行时在跑但 adb 看不到设备
-- **存储**：磁盘余量、数据分区配置值与实际值不一致（差量盘挡住扩容）、共享目录不可写
-- **设置**：屏幕方向策略与物理面板打架、独立窗口下的自动全屏不生效
-- **网络 / 日志**：安卓侧没网、下载源不通、最近日志里的错误
+- **Runtime** : véritable cause du dernier échec de démarrage, amorçage bloqué, fichiers de verrou résiduels, processus d'émulateur orphelins, snapshot « coquille vide », absence d'accélération matérielle
+- **Connexion de l'appareil** : adb non autorisé (une boîte « Autoriser le débogage USB ? » est apparue sans que personne ne réponde), état offline, runtime en cours d'exécution mais adb ne voit aucun appareil
+- **Stockage** : espace disque restant, divergence entre la valeur configurée et la valeur réelle de la partition de données (un disque de différence bloque l'agrandissement), répertoire partagé non accessible en écriture
+- **Réglages** : stratégie d'orientation en conflit avec le panel physique, plein écran automatique inefficace en fenêtre indépendante
+- **Réseau / journaux** : Android sans accès réseau, source de téléchargement injoignable, erreurs dans les journaux récents
 
-每条问题都能一键处理（重启运行时、清锁、清孤儿进程、作废快照、清理磁盘、重置安卓网络…）。
-修复后自动复检。
+Chaque problème peut être traité en un clic (redémarrer le runtime, supprimer les verrous, nettoyer les processus orphelins, invalider le snapshot, libérer le disque, réinitialiser le réseau Android…). Une nouvelle vérification est effectuée automatiquement après la réparation.
 
-两条原则：**探测失败不会被当成问题**（拿不到状态就报「不知道」，绝不瞎报），
-**只在新问题出现时提醒一次**（老问题不重复打扰，恢复了只静默记账）。
-默认每 10 分钟一次，可在同一页关掉或改间隔。
+Deux principes : **un échec de détection n'est jamais considéré comme un problème** (si l'état est indisponible, on affiche « inconnu » plutôt que de donner une fausse alerte) et **un seul avertissement par nouveau problème** (les anciens problèmes ne sont pas répétés, et le rétablissement est seulement enregistré silencieusement). Par défaut, une vérification toutes les 10 minutes ; la fréquence peut être désactivée ou modifiée sur la même page.
 
-## 从源码构建
+## Compilation depuis les sources
 
 ```powershell
-# 1. 安装依赖（含 Electron 运行时）
+# 1. Installer les dépendances (y compris le runtime Electron)
 npm install
 
-# 2. 启动并完成运行时部署（一次性下载 adb / Android Emulator / 系统镜像）
+# 2. Démarrer et effectuer le déploiement du runtime (téléchargement unique de adb / Android Emulator / image système)
 npm start
 
-# 3.（可选）注册 .apk 双击安装
+# 3. (Facultatif) Enregistrer l'installation par double-clic sur un .apk
 npm run assoc:on
 
-# 4. 打包便携版（免安装，可直接分发）
+# 4. Empaqueter la version portable (sans installation, directement distribuable)
 npm run pack
-# 产出 dist/ApkStart-win64-portable/ApkStart.exe
-# 5. 压成 zip 发布（必须用这个脚本，别用 Compress-Archive：体积会大 5MB、塞不进 Gitee）
+# Sortie : dist/ApkStart-win64-portable/ApkStart.exe
+# 5. Compresser en zip pour la publication (utiliser obligatoirement ce script, et non Compress-Archive : le fichier serait plus gros de 5 Mo et ne tiendrait pas dans Gitee)
 node build/zip.js dist/ApkStart-win64-portable ApkStart-win64-portable.zip
 ```
 
-### 单文件 EXE（内置完整运行时，装完不再联网）
+### EXE monofichier (runtime complet intégré, plus de réseau après installation)
 
-如果希望「一个 EXE 发出去，对方双击就能跑，不用等下载」，用这条：
+Si vous souhaitez « envoyer un seul EXE, que le destinataire double-clique pour le lancer sans attendre de téléchargement », utilisez cette méthode :
 
 ```powershell
-# 先把 engine/ 整理成可分发运行时（system.img 用 xz/LZMA2 极限压缩，3.1GB → 约 1.1GB；
-# 同时裁掉 emulator 里用不到的部分：arm64 的 QEMU、Vulkan 后端、多语言包、qsn/自检工具、VR 资源）
+# Organiser d'abord engine/ en runtime distribuable (system.img compressé au maximum en xz/LZMA2, 3,1 Go → ~1,1 Go ;
+# et retirer les parties inutiles de l'émulateur : QEMU arm64, backend Vulkan, packs de langues, outils qsn/autotest, ressources VR)
 npm run runtime
 
-# 再打成安装版 EXE（electron-builder nsis 目标，装到当前用户目录）
+# Puis produire l'installateur EXE (cible nsis d'electron-builder, installation dans le répertoire de l'utilisateur courant)
 npm run build:exe
-# 产出 dist/release/ApkStart-<版本>-Setup.exe
+# Sortie : dist/release/ApkStart-<version>-Setup.exe
 ```
 
-体积构成（实测）：Electron 约 180MB、emulator 瘦身后约 480MB、系统镜像 xz 压缩后约 1.1GB，
-最终安装包约 1.32GB（相比 gzip 方案省约 490MB）。能再压的硬下限就在 system.img 那条
-（它就是安卓系统本身，且是 verity 保护的镜像，无法从外部裁掉 GMS 组件）。
-网络默认走主机 NAT，不创建虚拟网卡，所以也不依赖任何额外驱动。
+Composition de la taille (mesurée) : Electron ~180 Mo, émulateur après allègement ~480 Mo, image système après compression xz ~1,1 Go, pour un installateur final d'environ 1,32 Go (soit environ 490 Mo économisés par rapport à gzip). Le seuil de compression dur restant se situe au niveau de `system.img` (c'est le système Android lui-même, une image protégée par verity : les composants GMS ne peuvent pas être retirés de l'extérieur). Le réseau passe par défaut par le NAT de l'hôte, sans créer de carte réseau virtuelle, et ne dépend donc d'aucun pilote supplémentaire.
 
-首次启动会把 xz 镜像展开到 `%APPDATA%\apkstart\system-images`（约 20 秒，只做一次），
-之后每次直接复用。AVD 与已装应用固定存放在 `%APPDATA%\apkstart\avd`，
-即使便携版每次解压到临时目录也不会丢。
+Au premier lancement, l'image xz est décompressée dans `%APPDATA%\apkstart\system-images` (~20 secondes, une seule fois), puis réutilisée directement à chaque démarrage suivant. L'AVD et les applications installées sont stockés à demeure dans `%APPDATA%\apkstart\avd` : même si la version portable est décompressée dans un répertoire temporaire à chaque fois, rien n'est perdu.
 
-## 运行时说明：完全独立，不依赖任何第三方模拟器
+## À propos du runtime : totalement autonome, sans dépendance à un émulateur tiers
 
-ApkStart 是一个**自持**的项目，运行时组件全部由自己下载、校验和管理（位于 `%APPDATA%\apkstart\runtime`）。
-轻量版默认从**本项目的 GitHub Release** 下载整包（`ApkStart-runtime-*.zip`），拿不到才退回下表里的官方源：
+ApkStart est un projet **autonome** : tous les composants du runtime sont téléchargés, vérifiés et gérés par lui-même (dans `%APPDATA%\apkstart\runtime`). La version légère télécharge par défaut le paquet complet depuis **la GitHub Release de ce projet** (`ApkStart-runtime-*.zip`) et ne revient aux sources officielles ci-dessous que si elle ne peut pas y accéder :
 
-| 组件 | 来源 | 大小 | 用途 |
+| Composant | Source | Taille | Rôle |
 |---|---|---|---|
-| adb（platform-tools） | dl.google.com 官方源 | ~8 MB | 安装/启动安卓应用 |
-| Android Emulator | dl.google.com 官方源（8 线程并行下载） | ~440 MB | 运行时引擎（自带设备模型与 GPU 转译） |
-| Android 14 通用系统镜像（Google Play x86_64） | dl.google.com 官方源 | 源镜像 ~3.1 GB（xz 后 ~1.1 GB） | 唯一的基础层：x86 应用、仅含 ARM 库的应用、GMS 都能跑，镜像即系统，无需安装 |
-| AEHD 驱动（可选） | dl.google.com 官方源 | ~0.2 MB | 硬件加速（或用 Windows「虚拟机平台」WHPX） |
+| adb (platform-tools) | Source officielle dl.google.com | ~8 Mo | Installation / lancement d'applications Android |
+| Android Emulator | Source officielle dl.google.com (téléchargement parallèle à 8 threads) | ~440 Mo | Moteur d'exécution (modèles d'appareils et traduction GPU intégrés) |
+| Image système Android 14 universelle (Google Play x86_64) | Source officielle dl.google.com | Image source ~3,1 Go (~1,1 Go après xz) | Seule couche de base : applications x86, applications ne contenant que des bibliothèques ARM et GMS fonctionnent ; l'image est le système, aucune installation nécessaire |
+| Pilote AEHD (facultatif) | Source officielle dl.google.com | ~0,2 Mo | Accélération matérielle (ou WHPX, la « plateforme de l'hyperviseur Windows ») |
 
-首次使用时，「运行时」页会引导完成以上部署（**一键部署**）：
-1. adb 与运行时引擎、系统镜像自动下载（官方源实测 10+ MB/s）；
-2. 部署完成后**自动开机**，之后双击桌面图标自动拉起，全程无感。
+À la première utilisation, la page « Runtime » guide ce déploiement (**déploiement en un clic**) :
+1. Téléchargement automatique de adb, du moteur d'exécution et de l'image système (sources officielles mesurées à plus de 10 Mo/s) ;
+2. Une fois le déploiement terminé, **démarrage automatique** ; ensuite, le double-clic sur une icône du bureau relance le tout automatiquement, de façon totalement transparente.
 
-![运行时部署向导](docs/images/setup.png)
+![Assistant de déploiement du runtime](docs/images/setup.png)
 
-**设备兼容性（自动处理，无需干预）**
+**Compatibilité des appareils (gérée automatiquement, sans intervention)**
 
-- 没有硬件加速时自动回退软件模拟；启动失败按「渲染后端 → 加速方式 → 内存/冷启动」最多 4 组参数自动重试。
-- `-gpu` 按引擎版本自动选择（37.x 用 `software`，老版本用 `swiftshader_indirect`），不再使用已弃用的模式。
-- 内存/核心数按物理内存自动推导（2–4 GB / 2–4 核），数据分区从 16 GB 降到 4 GB；端口动态挑空闲的，中文路径自动转短路径，AVD 锁文件自动清理。
-- 失败原因会翻译成中文并附上修复建议；设置里可「导出诊断报告」。
-- 大文件下载默认 **8 线程分块 + 断点续传**，不支持 Range 的源自动回退单流。
-- **只用自带运行时，与其它模拟器无关**：ApkStart 不探测、不接管、也不驱动你机器上装的 MuMu / 雷电 / 蓝叠 / WSA；
-  装没装它们、它们怎么升级、端口怎么变，都不影响 ApkStart。设置里也不再提供「切换引擎」的选项。
-- **本机体检 · 自动配置**：装完先查一遍 CPU 虚拟化（VT-x/SVM）、Windows 虚拟机监控程序平台、
-  显卡与显存、内存和系统版本；能自动改的（内存 / 核心 / 画质 / 渲染后端）直接写进设置并固化成驱动，
-  需要管理员权限的给按钮，只能在 BIOS 里改的告诉你怎么改。见 [docs/preflight.md](docs/preflight.md)。
-- **驱动（兼容补丁）扩展**：如果某台机器必须改启动参数才跑得起来（老显卡 GLES 版本低、没开硬件加速、
-  某版驱动一开硬件渲染就崩），可以写一份 JSON 补丁：声明匹配哪些机器、命中后改哪些参数。
-  设置页里能导入、启用、导出本机模板；补丁只改白名单里的启动项，不执行任何代码。见 [docs/drivers.md](docs/drivers.md)。
+- Sans accélération matérielle, repli automatique sur la simulation logicielle ; en cas d'échec de démarrage, jusqu'à 4 combinaisons de paramètres sont réessayées automatiquement selon « backend de rendu → mode d'accélération → mémoire / démarrage à froid ».
+- Le `-gpu` est choisi automatiquement according to la version du moteur (`software` pour les 37.x, `swiftshader_indirect` pour les anciennes versions) ; les modes dépréciés ne sont plus utilisés.
+- La mémoire et le nombre de cœurs sont déduits de la mémoire physique (2–4 Go / 2–4 cœurs), la partition de données passe de 16 Go à 4 Go ; les ports sont choisis dynamiquement parmi les ports libres, les chemins chinois sont convertis automatiquement en chemins courts, et les fichiers de verrou de l'AVD sont nettoyés automatiquement.
+- Les causes d'échec sont traduites en français et accompagnées de conseils de réparation ; les réglages permettent d'« exporter un rapport de diagnostic ».
+- Les téléchargements de gros fichiers utilisent par défaut **8 threads avec découpage en blocs et reprise sur erreur** ; les sources qui ne gèrent pas Range reviennent automatiquement à un flux unique.
+- **N'utilise que son propre runtime, indépendamment des autres émulateurs** : ApkStart ne détecte, ne prend en charge et ne pilote pas MuMu / LDPlayer / BlueStacks / WSA installés sur votre machine ; leur présence, leurs mises à jour et leurs changements de port n'ont aucun effet sur ApkStart. L'option « changer de moteur » a d'ailleurs été retirée des réglages.
+- **Bilan de santé · configuration automatique** : après l'installation, ApkStart vérifie la virtualisation CPU (VT-x/SVM), la plateforme de l'hyperviseur Windows, la carte graphique et sa mémoire vidéo, la mémoire vive et la version du système ; ce qui peut être corrigé automatiquement (mémoire / cœurs / qualité / backend de rendu) est écrit dans les réglages et figé sous forme de pilote ; ce qui exige les droits administrateur dispose d'un bouton ; ce qui doit être modifié dans le BIOS s'accompagne d'explications. Voir [docs/preflight.md](docs/preflight.md).
+- **Extension des pilotes (correctifs de compatibilité)** : si une machine particulière ne démarre qu'après modification des paramètres de lancement (ancienne carte graphique avec une version GLES trop basse, accélération matérielle désactivée, pilote qui plante dès que le rendu matériel est activé), vous pouvez écrire un correctif JSON : il déclare quelles machines correspondent et quels paramètres changer une fois la correspondance établie. La page de réglages permet d'importer, d'activer et d'exporter le modèle de la machine ; le correctif ne modifie que les options de lancement figurant sur une liste blanche et n'exécute aucun code. Voir [docs/drivers.md](docs/drivers.md).
 
-**容器式低成本运行**
+**Exécution conteneurisée à faible coût**
 
-- **只读基础层**：`system-images/` 全机一份，所有应用共享，不再同时存 AOSP + 兼容两套镜像。
-- **薄可写层**：单个 AVD 用差量用户数据 + 命名 quickboot 快照；关闭最后一个应用窗口后（空闲时）把内存状态存成快照，下次开机走恢复而不是冷启动。
-- **空闲预热（默认开启）**：像 WSA / 应用宝电脑版一样，ApkStart 一启动就在后台把安卓环境引导好（窗口全程隐藏），点应用时只剩一次 `am start`；代价是空闲常驻约 1 GB 内存，设置里可关闭。
-- **冷启动提速**：加速与引擎版本探测结果落盘缓存（按 exe 指纹失效）、跳过无谓的 `wmic` 进程枚举、开机探测改为自适应间隔（350ms 起）、guest 侧准备命令合并成一次 adb 往返；一次启动少等 5–10 秒。
-- **`/data` 由 ApkStart 自己造**：官方系统镜像里的 `userdata.img` 只是 1 MB 全零占位，真正的格式化原本由 SDK 工具完成 —— 直接拉 `emulator.exe` 会跳过这一步，于是 `/data` 挂不上、guest 掉进 recovery 重启循环，表现就是「等好几分钟还是打不开」。现在首次启动会自己生成一份 4 KB block、带 `ENCRYPT`（文件级加密）与 `ext_attr`（SELinux 标签）的 ext4，并用自带的 `qemu-img` + `resize2fs` 撑到配置的容量。实测冷启动 ~23 秒、命中快照 ~10 秒。
-- 快照完整性校验：保存被打断留下的空壳（只有几十字节的 `snapshot.pb`）会被识别并清理；新版 emulator 写的是 `ram.bin`（老版本是 `ram.img`），两种命名都认，不会再把刚存好的 3 GB 快照误判成空壳删掉。
-- **命令窗口彻底不出现**：qemu 的控制台窗口属于 `conhost.exe`，pid 和 qemu 对不上，靠 pid 白名单一个都藏不住；模拟器的网络守护进程 `netsimd` 还会自己再弹一个黑窗。现在改为「启动模拟器**之前**就打开常驻压制 + 按窗口类名/标题兜底（emulator / qemu / netsim）+ 开机 90 秒内 120ms 扫一次」。
-- **打开软件只看到软件界面**：模拟器主窗（`Android Emulator - apkstart5554`）永远不会单独出现在桌面上 —— 它要么被压制隐藏，要么已经被 `SetParent` 嵌进应用窗口。关掉应用窗口时会**先**把它从宿主窗口上摘下来并藏好，**再**销毁宿主（顺序反了 Windows 会把它重新挂到桌面并显示）；应用退出后窗口代理还会继续「守」最多 3 分钟，避免开机途中退出的那台模拟器在几十秒后把黑窗亮出来。
-- **按需下载**：遇到仅含 ARM 原生库的应用才会补齐通用镜像；`.apks` / `.xapk` 拆分包自动用 `install-multiple` 安装。
-- **可回收**：构建时裁掉非 x86_64 的 QEMU 目标（约 400 MB）；设置页可清理旧镜像、旧快照、锁文件和遗留 AVD。
+- **Couche de base en lecture seule** : une seule copie de `system-images/` pour toute la machine, partagée par toutes les applications ; plus de double stockage AOSP + version compatible.
+- **Couche inscriptible fine** : chaque AVD utilise des données utilisateur différentielles et un snapshot quickboot nommé ; après la fermeture de la dernière fenêtre d'application (donc à l'intervalle), l'état de la mémoire est enregistré en snapshot, et le prochain démarrage se fait par restauration plutôt que par démarrage à froid.
+- **Préchauffage à l'intervalle (activé par défaut)** : comme WSA ou l'édition PC du store de Tencent, ApkStart amorce l'environnement Android en arrière-plan dès son lancement (fenêtre entièrement masquée) ; il ne reste alors plus qu'un `am start` au moment de cliquer sur l'application. Contrepartie : environ 1 Go de mémoire résidente à l'intervalle ; cette option est désactivable dans les réglages.
+- **Accélération du démarrage à froid** : les résultats de la détection de l'accélération et de la version du moteur sont mis en cache sur disque (invalidés par l'empreinte de l'exe), l'énumération inutile des processus via `wmic` est supprimée, la détection au démarrage passe à un intervalle adaptatif (à partir de 350 ms) et les commandes de préparation côté invité sont regroupées en un seul aller-retour adb : 5 à 10 secondes gagnées à chaque démarrage.
+- **`/data` est créé par ApkStart lui-même** : le `userdata.img` de l'image système officielle n'est qu'un espace de 1 Mo rempli de zéros ; le formatage réel était normalement effectué par les outils du SDK — lancer directement `emulator.exe` saute cette étape, `/data` ne peut pas être monté et l'invité tombe dans une boucle de redémarrage en recovery, ce qui se manifeste par « plusieurs minutes d'attente sans que rien ne s'ouvre ». Désormais, au premier lancement, ApkStart génère lui-même un ext4 avec blocs de 4 Ko, `ENCRYPT` (chiffrement au niveau du fichier) et `ext_attr` (étiquettes SELinux), puis l'agrandit à la capacité configurée à l'aide de son propre `qemu-img` + `resize2fs`. Mesures : démarrage à froid ~23 s, restauration de snapshot ~10 s.
+- **Contrôle d'intégrité des snapshots** : les coquilles vides laissées par une sauvegarde interrompue (un `snapshot.pb` de quelques dizaines d'octets) sont détectées et nettoyées ; les versions récentes de l'émulateur écrivent `ram.bin` (les anciennes écrivaient `ram.img`) : les deux noms sont reconnus, et un snapshot de 3 Go fraîchement enregistré n'est plus pris à tort pour une coquille puis supprimé.
+- **Aucune fenêtre de console n'apparaît** : la fenêtre console de qemu appartient à `conhost.exe`, dont le pid ne correspond pas à celui de qemu — une liste blanche de pids ne suffit pas à la masquer ; le démon réseau de l'émulateur, `netsimd`, ouvre lui aussi une fenêtre noire. Désormais, la suppression est **installée avant le démarrage de l'émulateur**, avec un repli par nom de classe/titre de fenêtre (emulator / qemu / netsim) et une analyse toutes les 120 ms pendant les 90 premières secondes suivant le démarrage.
+- **Ouvrir un logiciel n'affiche que son interface** : la fenêtre principale de l'émulateur (`Android Emulator - apkstart5554`) n'apparaît jamais seule sur le bureau — elle est soit masquée par suppression, soit déjà intégrée à la fenêtre de l'application via `SetParent`. À la fermeture de la fenêtre de l'application, ApkStart la **détache d'abord** de la fenêtre hôte et la masque, **puis** détruit l'hôte (dans l'ordre inverse, Windows la rattacherait au bureau et l'afficherait) ; après la sortie de l'application, le proxy de fenêtre continue de « surveiller » jusqu'à 3 minutes, pour éviter qu'un émulateur quitté en cours de démarrage ne fasse réapparaître une fenêtre noire quelques dizaines de secondes plus tard.
+- **Téléchargement à la demande** : l'image universelle n'est complétée que lorsqu'une application ne contient que des bibliothèques natives ARM ; les paquets fractionnés `.apks` / `.xapk` sont installés automatiquement avec `install-multiple`.
+- **Récupérable** : les cibles QEMU non x86_64 sont retirées à la compilation (~400 Mo) ; la page de réglages permet de nettoyer les anciennes images, snapshots, fichiers de verrou et AVD abandonnés.
 
-## 目录结构
+## Structure du répertoire
 
 ```
 apkstart/
 ├─ src/
-│  ├─ main.js              主进程：窗口/托盘/单实例/命令行分发/IPC
-│  ├─ preload.js           安全桥接
-│  ├─ ui/                  渲染层（原生 HTML/CSS/JS，无框架）
+│  ├─ main.js               Processus principal : fenêtres / barre d'état / instance unique / dispatch en ligne de commande / IPC
+│  ├─ preload.js            Pont sécurisé
+│  ├─ ui/                   Couche de rendu (HTML/CSS/JS natifs, sans framework)
 │  └─ core/
-│     ├─ zip.js            极简 ZIP 读取器（按需解压）
-│     ├─ axml.js           Android 二进制 XML 解析
-│     ├─ arsc.js           resources.arsc 资源表解析（应用名/图标路径还原）
-│     ├─ apk.js            APK 元信息：包名/版本/启动 Activity/图标/ABI
-│     ├─ png.js            零依赖 PNG 编码器 + 程序图标绘制
-│     ├─ shortcut.js       多尺寸 ICO 生成 + .lnk 快捷方式
-│     ├─ assoc.js          .apk 文件关联（HKCU，免管理员）
-│     ├─ adb.js            adb 客户端（安装/启动/同步/截图/…）
-│     ├─ engine.js         运行时管理：探测/模拟器托管/空闲回收
-│     ├─ sharer.js         本机 ↔ 安卓共享目录双向同步
-│     ├─ installer.js      安装流水线编排
-│     └─ store.js          应用清单与设置持久化
-├─ engine/                 运行时组件下载缓存（emulator / system-images / platform-tools）
-├─ tools/platform-tools/   便携 adb 放置处
-├─ test/                   单元测试 + Electron 集成测试 + 冒烟截图
-├─ build/pack.js           便携版打包
-└─ scripts/assoc.js        .apk 关联命令行开关
+│     ├─ zip.js             Lecteur ZIP minimal (décompression à la demande)
+│     ├─ axml.js            Analyse du XML binaire Android
+│     ├─ arsc.js            Analyse de la table de ressources resources.arsc (restitution du nom et du chemin de l'icône de l'application)
+│     ├─ apk.js             Métadonnées APK : nom de paquet / version / Activity de lancement / icône / ABI
+│     ├─ png.js             Encodeur PNG sans dépendance + dessin des icônes du programme
+│     ├─ shortcut.js        Génération d'ICO multi-tailles + raccourci .lnk
+│     ├─ assoc.js           Association de fichiers .apk (HKCU, sans droits administrateur)
+│     ├─ adb.js             Client adb (installation / lancement / synchronisation / capture d'écran / …)
+│     ├─ engine.js          Gestion du runtime : détection / hébergement de l'émulateur / récupération à l'intervalle
+│     ├─ sharer.js          Synchronisation bidirectionnelle du répertoire partagé local ↔ Android
+│     ├─ installer.js       Orchestration du pipeline d'installation
+│     └─ store.js           Persistance du catalogue d'applications et des réglages
+├─ engine/                 Cache de téléchargement des composants du runtime (emulator / system-images / platform-tools)
+├─ tools/platform-tools/   Emplacement de l'adb portable
+├─ test/                   Tests unitaires + tests d'intégration Electron + captures de test (smoke)
+├─ build/pack.js           Empaquetage de la version portable
+└─ scripts/assoc.js        Interrupteur en ligne de commande de l'association .apk
 ```
 
-## 命令行
+## Ligne de commande
 
 ```
-ApkStart.exe                      打开主界面
-ApkStart.exe <路径\to.apk>        安装 APK
-ApkStart.exe --launch <包名>      直接启动应用（桌面快捷方式使用此参数）
+ApkStart.exe                          Ouvre l'interface principale
+ApkStart.exe <chemin\vers.apk>        Installe un APK
+ApkStart.exe --launch <nom de paquet> Lance directement une application (paramètre utilisé par les raccourcis du bureau)
 ```
 
-## 测试
+## Tests
 
 ```powershell
-npm test                                   # 纯 Node 单元测试 + 引擎链路测试（不需要网络）
-npm run test:boot                          # 真实引导测试：用 61MB Alpine guest 验证 QEMU 参数/建盘/优雅关机
-npm run selftest                           # 运行时自检：装好 Android 后一键验证 安装→启动→截图→共享目录
-electron test/electron-integration.js      # ICO / 快捷方式集成测试
-electron . --smoke test\shot.png           # 启动应用并截图（界面冒烟）
+npm test                                   # Tests unitaires Node purs + tests de la chaîne du moteur (aucun réseau requis)
+npm run test:boot                          # Test d'amorçage réel : invité Alpine de 61 Mo pour valider les paramètres QEMU, la création de disque et l'arrêt propre
+npm run selftest                           # Auto-test du runtime : une fois Android installé, valide en un clic installation → lancement → capture d'écran → répertoire partagé
+electron test/electron-integration.js      # Tests d'intégration ICO / raccourci
+electron . --smoke test\shot.png           # Lance l'application et prend une capture (test de fumée de l'interface)
 ```
 
-`npm run selftest` 是装好系统后的「验收命令」——它会对当前设备依次检查 adb 连接、
-Android 版本、freeform 支持、共享目录双向同步，加 `--apk 某应用.apk` 还会完整走一遍
-安装 → 独立窗口启动 → 前台确认 → 截图。
+`npm run selftest` est la « commande de recette » une fois le système installé : elle vérifie successivement la connexion adb de l'appareil courant, la version d'Android, la prise en charge du freeform et la synchronisation bidirectionnelle du répertoire partagé ; avec `--apk une-appli.apk`, elle effectue en plus un cycle complet : installation → lancement en fenêtre indépendante → confirmation au premier plan → capture d'écran.
 
-## 设计取舍（诚实说明）
+## Choix de conception (explications honnêtes)
 
-- **不是从零实现的 hypervisor**：安卓内核、GPU 转译、ART 运行时是数年级别的工程，本项目选择站在 AOSP/QEMU/adb 的肩膀上，把工程量集中在「原生应用级体验」上——这正是应用宝电脑版、Google Play Games PC 版等产品共同的架构思路。
-- **共享目录是同步而非挂载**：Windows 无 root 时无法在安卓侧挂载 NTFS 目录，采用秒级双向同步达到同等体验。
-- **ARM-only 应用 / 字节系应用**：设置里开启「ARM 兼容模式」即可切换到 **Android 14（API 34）Google Play 镜像**（内置新版 ndk_translation 翻译层），仅含 ARM 原生库的应用可以安装运行。**实测红果免费短剧（com.phoenix.read，arm64-v8a-only）可正常安装、进入推荐流并播放视频**——旧版 API 30 镜像上会因字节系自带非标准 signal handler 触发翻译层保护性断言（`DoBadTrampoline` SIGABRT），Android 14 镜像的新版翻译层已修复。个别应用自带更深的反模拟检测（如强制校验真实传感器/基带），仍可能受限；安装失败或启动崩溃时 ApkStart 会给出中文说明。
+- **Pas un hyperviseur écrit de zéro** : le noyau Android, la traduction GPU et le runtime ART sont des projets de l'ordre de plusieurs années ; ce projet choisit de s'appuyer sur AOSP/QEMU/adb et concentre son travail sur « une expérience équivalente à celle d'une application native » — c'est d'ailleurs l'architecture commune à des produits comme l'édition PC du store de Tencent ou Google Play Games PC.
+- **Le répertoire partagé est synchronisé, et non monté** : sans root sous Windows, impossible de monter un répertoire NTFS côté Android ; une synchronisation bidirectionnelle à la seconde offre la même expérience.
+- **Applications ARM-only / applications ByteDance** : activez le « Mode de compatibilité ARM » dans les réglages pour passer à l'**image Google Play Android 14 (API 34)** (qui intègre la nouvelle couche de traduction ndk_translation) : les applications ne contenant que des bibliothèques natives ARM peuvent être installées et exécutées. **Test confirmé : Hongguo Free Short Drama (com.phoenix.read, arm64-v8a uniquement) s'installe correctement, entre dans le flux de recommandations et lit des vidéos** — sur l'ancienne image API 30, le gestionnaire de signaux non standard embarqué par ces applications déclenchait une assertion de protection de la couche de traduction (`DoBadTrampoline` SIGABRT),Corrigée par la nouvelle couche de l'image Android 14. Quelques applications ajoutent une détection d'émulateur plus poussée (vérification obligatoire de capteurs ou de la baseband réels) et peuvent rester limitées ; en cas d'échec d'installation ou de crash au lancement, ApkStart affiche une explication en français.
 
-| 兼容模式下运行红果免费短剧（Android 14 · AEHD 硬件加速） |
+| Hongguo Free Short Drama en cours d'exécution en mode compatibilité (Android 14 · accélération matérielle AEHD) |
 |:---:|
-| ![红果短剧在 ApkStart 兼容模式运行](docs/images/compat-hongguo-playing.png) |
+| ![Hongguo Short Drama fonctionnant en mode compatibilité dans ApkStart](docs/images/compat-hongguo-playing.png) |
 
-### 提示「未启用硬件加速」怎么办
+### Que faire face au message « Accélération matérielle non activée »
 
-安卓模拟器在 Windows 上只有两条加速路：
+Les émulateurs Android n'ont que deux routes d'accélération sous Windows :
 
-| 方式 | 是什么 | 谁需要管理员 | 装完要重启吗 |
+| Méthode | Qu'est-ce que c'est | Qui a besoin des droits administrateur | Redémarrage après installation ? |
 |---|---|---|---|
-| **WHPX** | Windows 自带功能「Windows 虚拟机监控程序平台」 | 开这个功能时 | 要 |
-| **AEHD** | Google 自家内核驱动 | 装驱动时 | 不用 |
+| **WHPX** | Fonctionnalité Windows intégrée « Plateforme de l'hyperviseur Windows » | Pour activer cette fonctionnalité | Oui |
+| **AEHD** | Pilote noyau de Google | Pour installer le pilote | Non |
 
-- **安装版 / 便携版**：设置 → 环境自检 → 「未启用硬件加速」右侧点**修复**，会弹一次 UAC，自动开 WHPX；如果开不起来（系统不支持 / 你点了否），会自动改装 AEHD 驱动。
-- **微软商店（MSIX）版**：商店应用**不能自行提权**，所以点「修复」会直接帮你打开「启用或关闭 Windows 功能」对话框，勾选
-  **「Windows 虚拟机监控程序平台」**（英文 HypervisorPlatform），确定后**重启电脑**一次即可。
+- **Version installée / portable** : Réglages → Vérification de l'environnement → à droite de « Accélération matérielle non activée », cliquez sur **Réparer** : une fenêtre UAC s'affichera une fois et WHPX sera activé automatiquement ; si l'activation échoue (système non pris en charge ou vous avez répondu « Non »), le pilote AEHD sera installé automatiquement à la place.
+- **Version Microsoft Store (MSIX)** : une application du Store **ne peut pas s'élever elle-même en privilèges** ; le clic sur « Réparer » ouvre donc directement la boîte de dialogue « Activer ou désactiver les fonctionnalités Windows », dans laquelle vous cochez **« Plateforme de l'hyperviseur Windows »** (HypervisorPlatform en anglais), puis **redémarrez l'ordinateur** une fois.
 
-  也可以自己用管理员 PowerShell 跑：
+  Vous pouvez aussi effectuer l'opération vous-même avec PowerShell en tant qu'administrateur :
 
   ```powershell
   dism /online /enable-feature /featurename:HypervisorPlatform /all /norestart
   dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
   ```
 
-> 注意别只开「虚拟机平台（VirtualMachinePlatform）」——那是 WSL2 要用的，模拟器要的是
-> **「虚拟机监控程序平台（HypervisorPlatform）」**。只开前者，`emulator -accel-check` 依然会说不可用。
+> Attention : n'activez pas seulement « Plateforme de machines virtuelles (VirtualMachinePlatform) » — c'est celle qu'utilise WSL2 ; l'émulateur a besoin de la
+> **« Plateforme de l'hyperviseur (HypervisorPlatform) »**. Si seule la première est activée, `emulator -accel-check` indiquera toujours que l'accélération est indisponible.
 >
-> 没加速也能跑（纯软件模拟），只是开机会慢到几分钟——这也是应用里那条提示的目的，
-> 不是启动失败。
+> Sans accélération, cela fonctionne quand même (simulation entièrement logicielle), mais l'ouverture prend plusieurs minutes — c'est précisément l'objet de cette indication dans l'application,
+> et non un échec de lancement.
 
-### 桌面图标不对 / 显示成 ApkStart 的图标怎么办
+### L'icône du bureau est fausse / affiche celle d'ApkStart
 
-每个安卓应用的桌面快捷方式都应该用它**自己的图标**（安装时从 APK 里解出来存到
-`%APPDATA%\apkstart\icons\<包名>.ico`）。如果显示成了 ApkStart 的绿色播放键，或者干脆是空白图标：
+Le raccourci sur le bureau de chaque application Android devrait utiliser **sa propre icône** (extraite de l'APK à l'installation et enregistrée dans `%APPDATA%\apkstart\icons\<nom de paquet>.ico`). Si vous voyez à la place le bouton de lecture vert d'ApkStart, ou simplement une icône vide :
 
-1. **设置 → 系统集成 → 重建快捷方式**（会把桌面和开始菜单的快捷方式按当前应用清单重写一遍，
-   连同图标和任务栏身份一起修好）；
-2. 还不行就删掉那个快捷方式，在 ApkStart 里右键应用 → 重新创建快捷方式/重装一次。
+1. **Réglages → Intégration système → Recréer les raccourcis** (les raccourcis du bureau et du menu Démarrer sont réécrits d'après le catalogue d'applications courant, ce qui répare aussi les icônes et l'identité dans la barre des tâches) ;
+2. Si cela ne suffit pas, supprimez le raccourci concerné, puis dans ApkStart faites un clic droit sur l'application → Recréer le raccourci, ou réinstallez-la une fois.
 
-> 为什么会坏：早期版本整理图标时把这些 `.lnk` 图标的 `IconLocation` 统一指向了 ApkStart 的品牌图；
-> 另外把便携版整个目录挪到别处后，`.lnk` 里记的绝对路径也会失效。重建一次即可。
+> Pourquoi cela se produit : les anciennes versions alignaient l'`IconLocation` de ces `.lnk` sur l'icône de marque d'ApkStart ;
+> en outre, après avoir déplacé tout le répertoire de la version portable, le chemin absolu mémorisé dans le `.lnk` devient invalide. Une recréation suffit.
 >
-> 顺带说一句：每个应用的快捷方式都带自己的 AppUserModelID，
-> 所以**固定到任务栏**后，任务栏按钮和固定项用的是同一个应用图标，不会混成 ApkStart。
+> À noter au passage : chaque raccourci d'application porte son propre AppUserModelID ;
+> une fois **épinglé à la barre des tâches**, le bouton et l'élément épinglé utilisent la même icône d'application, sans être confondus avec ApkStart.
 
-### 为什么我的 `adb devices` 看不到这台安卓设备
+### Pourquoi `adb devices` ne voit-il pas cet appareil Android
 
-ApkStart 的 adb 服务跑在**专用端口 5044**，和系统里你自己的 adb（5037）完全隔开 —— 这样你的 Android Studio / scrcpy 不会跟它抢设备，它也不会误杀你手动开的模拟器。
+Le serveur adb d'ApkStart tourne sur un **port dédié, le 5044**, complètement séparé de votre adb système (port 5037) : votre Android Studio / scrcpy ne se bat pas avec lui pour l'appareil, et lui ne tue pas par erreur l'émulateur que vous avez lancé manuellement.
 
-要用命令行连它：
+Pour s'y connecter en ligne de commande :
 
 ```powershell
 $env:ANDROID_ADB_SERVER_PORT = 5044
-adb devices              # 会看到 emulator-5554
+adb devices              # Affiche emulator-5554
 ```
 
-⚠️ **不要**对着 `5555` 端口手动 `adb connect`：Play 版系统镜像会弹「允许 USB 调试吗」的系统对话框，而且它会盖在正在运行的安卓应用上，看起来像是程序出了问题。
+⚠️ **Ne faites pas** de `adb connect` manuel vers le port `5555` : l'image système Play afficherait une boîte « Autoriser le débogage USB ? » qui recouvrirait l'application en cours d'exécution, donnant l'impression que le programme a un problème.
 
-## 关于作者
+## À propos de l'auteur
 
-ApkStart 由 **RoutineMiku** 开发维护。
+ApkStart est développé et maintenu par **RoutineMiku**.
 
-- GitHub：<https://github.com/RoutineMiku/apkstart>
-- 微信公众号：扫码关注
+- GitHub : <https://github.com/RoutineMiku/apkstart>
+- Compte WeChat : scannez le QR code pour suivre le projet
 
-<p align="center"><img src="docs/images/brand.png" alt="关于面板：公众号二维码与项目链接" width="560" /></p>
+<p align="center"><img src="docs/images/brand.png" alt="À propos : QR code du compte WeChat et liens du projet" width="560" /></p>
 
-<p align="center"><i>Powered by <b>RoutineMiku</b></i></p>
+<p align="center"><i>Propulsé par <b>RoutineMiku</b></i></p>
 
-## 参与贡献
+## Participation
 
-欢迎 Issue / PR。壳层保持零第三方依赖，提交前请跑 `npm test`；细节见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Les Issues / PR sont les bienvenues. La couche reste sans dépendance tierce ; veuillez exécuter `npm test` avant de soumettre ; les détails sont dans [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 许可证
+## Licence
 
-[MIT](LICENSE)。发行包只含 ApkStart 自身代码与 Electron 运行时，不分发安卓系统镜像、QEMU 二进制或 Google 组件；这些由用户本机首次启动时从官方源按需下载，遵循各自的许可协议。
+[MIT](LICENSE). Le paquet publié ne contient que le code d'ApkStart lui-même et le runtime Electron ; il ne distribue ni image système Android, ni binaire QEMU, ni composants Google : ceux-ci sont téléchargés à la demande depuis les sources officielles lors du premier lancement sur la machine de l'utilisateur, conformément à leurs licences respectives.
