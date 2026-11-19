@@ -14,6 +14,8 @@
  *   3. 任何自动值都必须能算得出来：拿不到宿主信息就退回保守默认，不能返回 NaN。
  */
 
+const i18n = require('../i18n');
+
 const DEFAULT_STEP_MB = 512;
 const MIN_MEM_MB = 1024;
 /** 给宿主（Windows + 前台程序）留的比例 */
@@ -77,11 +79,11 @@ function clampMemoryMB(mb, totalMB) {
     return {
       mb: lim.maxMB,
       capped: true,
-      reason: `宿主内存 ${Math.round(lim.totalMB / 1024)} GB，最多只能分 ${Math.round(lim.maxMB / 1024)} GB（要留 25% 给 Windows）`,
+      reason: i18n.t('core.res.memCapped', '宿主内存 {total} GB，最多只能分 {max} GB（要留 25% 给 Windows）', { total: Math.round(lim.totalMB / 1024), max: Math.round(lim.maxMB / 1024) }),
     };
   }
-  if (rounded < lim.minMB) return { mb: lim.minMB, capped: true, reason: `安卓至少要 ${lim.minMB} MB 才能启动` };
-  return { mb: rounded, capped: rounded !== want, reason: rounded !== want ? '已按 512 MB 对齐' : '' };
+  if (rounded < lim.minMB) return { mb: lim.minMB, capped: true, reason: i18n.t('core.res.memTooLow', '安卓至少要 {min} MB 才能启动', { min: lim.minMB }) };
+  return { mb: rounded, capped: rounded !== want, reason: rounded !== want ? i18n.t('core.res.memAligned', '已按 512 MB 对齐') : '' };
 }
 
 /**
@@ -94,7 +96,7 @@ function clampCores(n, hostCores) {
   const max = total > 1 ? total - 1 : 1;
   if (want <= 0) return { cores: 0, capped: false, reason: 'auto' };
   if (want > max) {
-    return { cores: max, capped: true, reason: `本机 ${total} 核，最多分 ${max} 核（留 1 核给 Windows）` };
+    return { cores: max, capped: true, reason: i18n.t('core.res.coresCapped', '本机 {total} 核，最多分 {max} 核（留 1 核给 Windows）', { total, max }) };
   }
   return { cores: Math.max(1, want), capped: false, reason: '' };
 }
@@ -108,18 +110,18 @@ function memVerdict(allocMB, hostMB) {
   const host = toInt(hostMB);
   if (!alloc || !host) return { level: 'unknown', ratio: 0, note: '' };
   if (alloc < ABSOLUTE_MIN_MB) {
-    return { level: 'insufficient', ratio: alloc / host, note: `只分 ${alloc} MB，安卓可能起不来` };
+    return { level: 'insufficient', ratio: alloc / host, note: i18n.t('core.res.tooLittleMem', '只分 {alloc} MB，安卓可能起不来', { alloc }) };
   }
   const ratio = alloc / host;
   if (ratio > 1 - HOST_RESERVE_RATIO) {
     return {
       level: 'insufficient',
       ratio,
-      note: `占了宿主 ${Math.round(ratio * 100)}% 内存，Windows 会开始换页，模拟器反而更卡`,
+      note: i18n.t('core.res.memTooMuch', '占了宿主 {percent}% 内存，Windows 会开始换页，模拟器反而更卡', { percent: Math.round(ratio * 100) }),
     };
   }
   if (ratio > TIGHT_RATIO * (1 - HOST_RESERVE_RATIO)) {
-    return { level: 'tight', ratio, note: `已用 ${Math.round(ratio * 100)}% 宿主内存，建议同时关掉浏览器标签页` };
+    return { level: 'tight', ratio, note: i18n.t('core.res.memTight', '已用 {percent}% 宿主内存，建议同时关掉浏览器标签页', { percent: Math.round(ratio * 100) }) };
   }
   return { level: 'ok', ratio, note: '' };
 }
@@ -155,7 +157,7 @@ function clampDataGB(gb, freeMB) {
     return {
       gb: Math.max(0, lim.maxGB),
       capped: true,
-      reason: `所在磁盘只剩 ${(lim.freeMB / 1024).toFixed(1)} GB，最多能分 ${lim.maxGB} GB`,
+      reason: i18n.t('core.res.dataCapped', '所在磁盘只剩 {free} GB，最多能分 {max} GB', { free: (lim.freeMB / 1024).toFixed(1), max: lim.maxGB }),
     };
   }
   return { gb: want, capped: false, reason: '' };
@@ -168,7 +170,7 @@ function clampDataGB(gb, freeMB) {
 function storageVerdict(freeMB, packageBytes) {
   const need = diskRequiredMB(packageBytes);
   const free = Math.max(0, toInt(freeMB));
-  if (!free) return { ok: true, needMB: need, freeMB: 0, shortMB: 0, note: '读不到磁盘剩余空间，跳过预检' };
+  if (!free) return { ok: true, needMB: need, freeMB: 0, shortMB: 0, note: i18n.t('core.res.diskUnknown', '读不到磁盘剩余空间，跳过预检') };
   if (free >= need) return { ok: true, needMB: need, freeMB: free, shortMB: 0, note: '' };
   const short = need - free;
   return {
@@ -176,7 +178,7 @@ function storageVerdict(freeMB, packageBytes) {
     needMB: need,
     freeMB: free,
     shortMB: short,
-    note: `需要约 ${(need / 1024).toFixed(1)} GB，当前只剩 ${(free / 1024).toFixed(1)} GB，还差 ${(short / 1024).toFixed(1)} GB`,
+    note: i18n.t('core.res.diskShort', '需要约 {need} GB，当前只剩 {free} GB，还差 {short} GB', { need: (need / 1024).toFixed(1), free: (free / 1024).toFixed(1), short: (short / 1024).toFixed(1) }),
   };
 }
 
@@ -194,8 +196,11 @@ function diskVerdict(freeMB, requiredMB) {
     ok: false,
     freeMB: free,
     requiredMB: need,
-    message: `磁盘空间不足：还要约 ${Math.ceil(need / 1024)} GB，但 ApkStart 运行时所在磁盘只剩 ${(free / 1024).toFixed(1)} GB。`
-      + '请在设置里把运行时目录挪到空间更大的分区，或清理后重试。',
+    message: i18n.t('core.res.diskInsufficient', '磁盘空间不足：还要约 {need} GB，但 ApkStart 运行时所在磁盘只剩 {free} GB。'
+      + '请在设置里把运行时目录挪到空间更大的分区，或清理后重试。', {
+      need: Math.ceil(need / 1024),
+      free: (free / 1024).toFixed(1),
+    }),
   };
 }
 

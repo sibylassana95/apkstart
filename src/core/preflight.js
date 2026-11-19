@@ -23,6 +23,7 @@
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
+const i18n = require('../i18n');
 
 // ---------------- 探测 ----------------
 
@@ -219,13 +220,13 @@ function recommendResources({ totalMB = 0, cores = 0, accelOk = false, vramMB = 
 
 /** 渲染后端建议：按厂商 + 加速状态 + 显存给一个「先试这个」的档位 */
 function recommendGpu({ vendor = 'unknown', accelOk = false, vramMB = 0 } = {}) {
-  if (!accelOk) return { gpuMode: 'software', why: '没有可用的硬件加速，先用软件渲染保证画面能出来' };
-  if (vendor === 'unknown') return { gpuMode: 'auto', why: '显卡型号读不到，交给自动降级链去试' };
-  if (!vramMB || vramMB < 512) return { gpuMode: 'swangle', why: '显存很小（或读不到），用 swangle 更稳' };
-  if (vendor === 'nvidia') return { gpuMode: 'host', why: 'NVIDIA 驱动成熟，host 直通通常最快' };
-  if (vendor === 'amd') return { gpuMode: 'swangle', why: 'AMD 核显/老驱动下 host 可能起来后崩，swangle 更稳' };
-  if (vendor === 'intel') return { gpuMode: 'swangle', why: 'Intel 核显对 GLES 支持参差，swangle 更稳' };
-  return { gpuMode: 'auto', why: '显卡型号读不到，交给自动降级链去试' };
+  if (!accelOk) return { gpuMode: 'software', why: i18n.t('core.preflight.gpuWhy.noAccel', '没有可用的硬件加速，先用软件渲染保证画面能出来') };
+  if (vendor === 'unknown') return { gpuMode: 'auto', why: i18n.t('core.preflight.gpuWhy.unknown', '显卡型号读不到，交给自动降级链去试') };
+  if (!vramMB || vramMB < 512) return { gpuMode: 'swangle', why: i18n.t('core.preflight.gpuWhy.lowVram', '显存很小（或读不到），用 swangle 更稳') };
+  if (vendor === 'nvidia') return { gpuMode: 'host', why: i18n.t('core.preflight.gpuWhy.nvidia', 'NVIDIA 驱动成熟，host 直通通常最快') };
+  if (vendor === 'amd') return { gpuMode: 'swangle', why: i18n.t('core.preflight.gpuWhy.amd', 'AMD 核显/老驱动下 host 可能起来后崩，swangle 更稳') };
+  if (vendor === 'intel') return { gpuMode: 'swangle', why: i18n.t('core.preflight.gpuWhy.intel', 'Intel 核显对 GLES 支持参差，swangle 更稳') };
+  return { gpuMode: 'auto', why: i18n.t('core.preflight.gpuWhy.unknown', '显卡型号读不到，交给自动降级链去试') };
 }
 
 /**
@@ -248,34 +249,33 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
     add({
       key: 'vt-unsupported',
       level: 'bad',
-      title: '这颗 CPU 不支持硬件虚拟化',
-      detail: '只能走软件模拟，速度会慢 5~10 倍。轻量应用还能用，大型游戏不建议。',
+      title: i18n.t('core.preflight.vtUnsupported.title', '这颗 CPU 不支持硬件虚拟化'),
+      detail: i18n.t('core.preflight.vtUnsupported.detail', '只能走软件模拟，速度会慢 5~10 倍。轻量应用还能用，大型游戏不建议。'),
       action: null,
     });
   } else if (cpu.vtFirmware === false) {
     add({
       key: 'vt-bios-off',
       level: 'bad',
-      title: 'CPU 虚拟化在 BIOS 里没开',
-      detail: '重启进 BIOS/UEFI，把 Intel VT-x（Intel）或 SVM Mode（AMD）设为 Enabled，保存后回来重新体检。'
-        + '联想/戴尔/华硕一般在 Advanced → CPU Configuration 里；品牌机可能叫 Virtualization Technology。',
-      action: { kind: 'manual', id: 'bios', label: '需要重启进 BIOS，无法自动完成' },
+      title: i18n.t('core.preflight.vtBiosOff.title', 'CPU 虚拟化在 BIOS 里没开'),
+      detail: i18n.t('core.preflight.vtBiosOff.detail', '重启进 BIOS/UEFI，把 Intel VT-x（Intel）或 SVM Mode（AMD）设为 Enabled，保存后回来重新体检。联想/戴尔/华硕一般在 Advanced → CPU Configuration 里；品牌机可能叫 Virtualization Technology。'),
+      action: { kind: 'manual', id: 'bios', label: i18n.t('core.preflight.vtBiosOff.action', '需要重启进 BIOS，无法自动完成') },
     });
   } else if (cpu.vtFirmware === true) {
     add({
       key: 'vt-ok',
       level: 'ok',
-      title: 'CPU 虚拟化已在 BIOS 开启',
-      detail: cpu.name ? `${cpu.name} · ${cpu.cores || '?'} 核 / ${cpu.threads || '?'} 线程` : '',
+      title: i18n.t('core.preflight.vtOk.title', 'CPU 虚拟化已在 BIOS 开启'),
+      detail: cpu.name ? i18n.t('core.preflight.vtOk.detail', '{name} · {cores} 核 / {threads} 线程', { name: cpu.name, cores: cpu.cores || '?', threads: cpu.threads || '?' }) : '',
       action: null,
     });
   } else {
     add({
       key: 'vt-unknown',
       level: 'warn',
-      title: '读不到 CPU 虚拟化状态',
-      detail: '可能是主板/权限限制。若启动时提示没有硬件加速，请手动进 BIOS 确认 VT-x / SVM 已开启。',
-      action: { kind: 'manual', id: 'bios', label: '手动确认' },
+      title: i18n.t('core.preflight.vtUnknown.title', '读不到 CPU 虚拟化状态'),
+      detail: i18n.t('core.preflight.vtUnknown.detail', '可能是主板/权限限制。若启动时提示没有硬件加速，请手动进 BIOS 确认 VT-x / SVM 已开启。'),
+      action: { kind: 'manual', id: 'bios', label: i18n.t('core.preflight.vtUnknown.action', '手动确认') },
     });
   }
 
@@ -286,28 +286,27 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
     add({
       key: 'whpx-ok',
       level: 'ok',
-      title: 'Windows 虚拟机监控程序平台已启用',
+      title: i18n.t('core.preflight.whpxOk.title', 'Windows 虚拟机监控程序平台已启用'),
       detail: v.hypervisorPresent
-        ? 'Hypervisor 正在运行，WHPX 可用。'
-        : '功能已启用；如果加速仍不可用，重启一次让 Hypervisor 起来。',
+        ? i18n.t('core.preflight.whpxOk.detailOn', 'Hypervisor 正在运行，WHPX 可用。')
+        : i18n.t('core.preflight.whpxOk.detailOff', '功能已启用；如果加速仍不可用，重启一次让 Hypervisor 起来。'),
       action: null,
     });
   } else if (edition === 'store') {
     add({
       key: 'whpx-off',
       level: 'bad',
-      title: '「虚拟机监控程序平台」没有启用',
-      detail: '商店版不能自行改系统功能。按 Win+R → 输入 optionalfeatures → 勾选「Windows 虚拟机监控程序平台」'
-        + '（HypervisorPlatform）与「虚拟机平台」→ 确定 → 重启。',
-      action: { kind: 'elevate', id: 'virtualization', label: '打开「Windows 功能」窗口' },
+      title: i18n.t('core.preflight.whpxOff.title', '「虚拟机监控程序平台」没有启用'),
+      detail: i18n.t('core.preflight.whpxOff.detailStore', '商店版不能自行改系统功能。按 Win+R → 输入 optionalfeatures → 勾选「Windows 虚拟机监控程序平台」（HypervisorPlatform）与「虚拟机平台」→ 确定 → 重启。'),
+      action: { kind: 'elevate', id: 'virtualization', label: i18n.t('core.preflight.whpxOff.actionStore', '打开「Windows 功能」窗口') },
     });
   } else {
     add({
       key: 'whpx-off',
       level: 'bad',
-      title: '「虚拟机监控程序平台」没有启用',
-      detail: '点下面的按钮会自动开启 HypervisorPlatform + VirtualMachinePlatform（需要管理员确认），完成后重启电脑。',
-      action: { kind: 'elevate', id: 'virtualization', label: '一键开启（需管理员）' },
+      title: i18n.t('core.preflight.whpxOff.title', '「虚拟机监控程序平台」没有启用'),
+      detail: i18n.t('core.preflight.whpxOff.detailInstaller', '点下面的按钮会自动开启 HypervisorPlatform + VirtualMachinePlatform（需要管理员确认），完成后重启电脑。'),
+      action: { kind: 'elevate', id: 'virtualization', label: i18n.t('core.preflight.whpxOff.actionInstaller', '一键开启（需管理员）') },
     });
   }
 
@@ -316,20 +315,20 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
     add({
       key: 'accel-ok',
       level: 'ok',
-      title: `硬件加速可用（${v.accelKind === 'aehd' ? 'AEHD' : 'WHPX'}）`,
-      detail: '启动会走硬件加速；下面的配置按这台机器的显卡与内存推荐。',
+      title: i18n.t('core.preflight.accelOk.title', '硬件加速可用（{kind}）', { kind: v.accelKind === 'aehd' ? 'AEHD' : 'WHPX' }),
+      detail: i18n.t('core.preflight.accelOk.detail', '启动会走硬件加速；下面的配置按这台机器的显卡与内存推荐。'),
       action: null,
     });
   } else {
     add({
       key: 'accel-off',
       level: 'warn',
-      title: '当前没有可用的硬件加速',
+      title: i18n.t('core.preflight.accelOff.title', '当前没有可用的硬件加速'),
       detail: edition === 'installer' && v.vtFirmware !== false
-        ? '可以装 AEHD 驱动（需管理员），或先开「虚拟机监控程序平台」后重启；两者都不行就只能软件模拟。'
-        : '会先用软件模拟保证能跑；速度比硬件加速慢 5~10 倍。',
+        ? i18n.t('core.preflight.accelOff.detailCanInstall', '可以装 AEHD 驱动（需管理员），或先开「虚拟机监控程序平台」后重启；两者都不行就只能软件模拟。')
+        : i18n.t('core.preflight.accelOff.detailSoftOnly', '会先用软件模拟保证能跑；速度比硬件加速慢 5~10 倍。'),
       action: edition === 'installer' && v.vtFirmware !== false
-        ? { kind: 'elevate', id: 'accel', label: '安装 AEHD 驱动（需管理员）' }
+        ? { kind: 'elevate', id: 'accel', label: i18n.t('core.preflight.accelOff.action', '安装 AEHD 驱动（需管理员）') }
         : null,
     });
   }
@@ -339,20 +338,20 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
     add({
       key: 'gpu-unknown',
       level: 'warn',
-      title: '读不到显卡信息',
-      detail: '可能是远程桌面 / 虚拟机 / 驱动异常。渲染后端交给自动降级链处理。',
+      title: i18n.t('core.preflight.gpuUnknown.title', '读不到显卡信息'),
+      detail: i18n.t('core.preflight.gpuUnknown.detail', '可能是远程桌面 / 虚拟机 / 驱动异常。渲染后端交给自动降级链处理。'),
       action: null,
     });
   } else {
     const integrated = /radeon\s+(graphics|vega)|uhd|iris|hd\s+graphics|vega/i.test(gpu.name);
     const vram = gpu.vramMB
-      ? `${(gpu.vramMB / 1024).toFixed(1)} GB 显存${integrated ? '（核显，其余走共享内存）' : ''}`
-      : '显存未知';
+      ? `${(gpu.vramMB / 1024).toFixed(1)} ${i18n.t('core.preflight.vram', 'GB 显存')}${integrated ? i18n.t('core.preflight.integrated', '（核显，其余走共享内存）') : ''}`
+      : i18n.t('core.preflight.vramUnknown', '显存未知');
     add({
       key: 'gpu-info',
       level: 'ok',
       title: `${gpu.name}`,
-      detail: `${vram}${gpu.driverVersion ? ` · 驱动 ${gpu.driverVersion}` : ''}${gpu.driverDate ? `（${gpu.driverDate}）` : ''}`,
+      detail: `${vram}${gpu.driverVersion ? ` · ${i18n.t('core.preflight.driver', '驱动')} ${gpu.driverVersion}` : ''}${gpu.driverDate ? `（${gpu.driverDate}）` : ''}`,
       action: null,
     });
     const old = /^(19|20)\d{2}-\d{2}-\d{2}$/.test(gpu.driverDate || '')
@@ -361,8 +360,8 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
       add({
         key: 'gpu-driver-old',
         level: 'warn',
-        title: '显卡驱动比较旧',
-        detail: `驱动日期 ${gpu.driverDate}（约 ${Math.floor(old)} 年前）。老驱动是「起来后黑屏 / 花屏」的常见原因，建议去厂商官网更新。`,
+        title: i18n.t('core.preflight.gpuDriverOld.title', '显卡驱动比较旧'),
+        detail: i18n.t('core.preflight.gpuDriverOld.detail', '驱动日期 {date}（约 {years} 年前）。老驱动是「起来后黑屏 / 花屏」的常见原因，建议去厂商官网更新。', { date: gpu.driverDate, years: Math.floor(old) }),
         action: null,
       });
     }
@@ -371,20 +370,20 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
   // ---- 5. 内存 / 磁盘 / 系统版本 ----
   const total = Number(mem.totalMB) || 0;
   if (!total) {
-    add({ key: 'mem-unknown', level: 'warn', title: '读不到物理内存', detail: '', action: null });
+    add({ key: 'mem-unknown', level: 'warn', title: i18n.t('core.preflight.memUnknown.title', '读不到物理内存'), detail: '', action: null });
   } else if (total < 6144) {
     add({
       key: 'mem-low',
       level: 'warn',
-      title: `内存偏小（${(total / 1024).toFixed(1)} GB）`,
-      detail: '安卓虚拟机最多只能分 2 GB、2 核，画质降到 540×960，并建议关掉浏览器标签页再开应用。',
+      title: i18n.t('core.preflight.memLow.title', '内存偏小（{gb} GB）', { gb: (total / 1024).toFixed(1) }),
+      detail: i18n.t('core.preflight.memLow.detail', '安卓虚拟机最多只能分 2 GB、2 核，画质降到 540×960，并建议关掉浏览器标签页再开应用。'),
       action: null,
     });
   } else {
     add({
       key: 'mem-ok',
       level: 'ok',
-      title: `物理内存 ${(total / 1024).toFixed(0)} GB`,
+      title: i18n.t('core.preflight.memOk.title', '物理内存 {gb} GB', { gb: (total / 1024).toFixed(0) }),
       detail: '',
       action: null,
     });
@@ -395,8 +394,8 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
     add({
       key: 'os-old',
       level: 'warn',
-      title: `Windows 版本较旧（build ${build}）`,
-      detail: 'ApkStart 最低支持 Windows 10 2004（build 19041）。更旧的系统上 emulator 可能直接退出。',
+      title: i18n.t('core.preflight.osOld.title', 'Windows 版本较旧（build {build}）', { build: build }),
+      detail: i18n.t('core.preflight.osOld.detail', 'ApkStart 最低支持 Windows 10 2004（build 19041）。更旧的系统上 emulator 可能直接退出。'),
       action: null,
     });
   }
@@ -421,10 +420,10 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
   const driver = {
     format: 'apkstart-driver/1',
     id: `auto-${vendor}-${build || 'x'}`.toLowerCase().replace(/[^a-z0-9._-]/g, '-'),
-    name: `本机自动配置（${gpu.name || vendor}）`,
+    name: i18n.t('core.preflight.driver.name', '本机自动配置（{name}）', { name: gpu.name || vendor }),
     version: '1.0.0',
-    author: 'ApkStart 体检',
-    description: `由「本机体检 · 自动配置」生成：${gpuRec.why}。${v.accelOk ? '硬件加速可用。' : '当前无硬件加速。'}`,
+    author: i18n.t('core.preflight.driver.author', 'ApkStart 体检'),
+    description: i18n.t('core.preflight.driver.description', '由「本机体检 · 自动配置」生成：{why}。{accel}', { why: gpuRec.why, accel: v.accelOk ? i18n.t('core.preflight.driver.accelOn', '硬件加速可用。') : i18n.t('core.preflight.driver.accelOff', '当前无硬件加速。') }),
     priority: 5,
     match: {
       platform: [hw.platform || process.platform],
@@ -442,11 +441,12 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
   const bad = items.filter((i) => i.level === 'bad').length;
   const warn = items.filter((i) => i.level === 'warn').length;
   const level = bad ? 'bad' : warn ? 'warn' : 'good';
+  const listSep = i18n.t('core.preflight.listSep', '、');
   const summary = bad
-    ? `发现 ${bad} 项必须先处理（${items.filter((i) => i.level === 'bad').map((i) => i.title).join('、')}）`
+    ? i18n.t('core.preflight.summaryBad', '发现 {n} 项必须先处理（{list}）', { n: bad, list: items.filter((i) => i.level === 'bad').map((i) => i.title).join(listSep) })
     : warn
-      ? `有 ${warn} 项建议优化（${items.filter((i) => i.level === 'warn').map((i) => i.title).join('、')}）`
-      : '这台机器可以直接跑硬件加速，配置已经是最优';
+      ? i18n.t('core.preflight.summaryWarn', '有 {n} 项建议优化（{list}）', { n: warn, list: items.filter((i) => i.level === 'warn').map((i) => i.title).join(listSep) })
+      : i18n.t('core.preflight.summaryGood', '这台机器可以直接跑硬件加速，配置已经是最优');
 
   return {
     level,

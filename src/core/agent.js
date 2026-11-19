@@ -16,6 +16,7 @@ const net = require('net');
 const path = require('path');
 const fs = require('fs');
 const { EventEmitter } = require('events');
+const i18n = require('../i18n');
 
 const SCRIPT = path.join(__dirname, 'win', 'agent.ps1');
 const CALL_TIMEOUT = 6000;
@@ -40,7 +41,7 @@ class WinAgent extends EventEmitter {
   ensure() {
     if (this.ready) return this.ready;
     this.ready = new Promise((resolve, reject) => {
-      if (!this.available) { reject(new Error('窗口代理不可用')); return; }
+      if (!this.available) { reject(new Error(i18n.t('core.agent.unavailable', '窗口代理不可用'))); return; }
       let out = '';
       let settled = false;
       const proc = spawn('powershell.exe', [
@@ -73,11 +74,11 @@ class WinAgent extends EventEmitter {
         this.ready = null;
         this.hooked = false;
         this.hookConf = null;
-        this._failAll('窗口代理已退出');
+        this._failAll(i18n.t('core.agent.exited', '窗口代理已退出'));
         if (wasReady) this.emit('exit');
-        fail(new Error('窗口代理启动失败'));
+        fail(new Error(i18n.t('core.agent.startFailed', '窗口代理启动失败')));
       });
-      setTimeout(() => { if (!settled) fail(new Error('窗口代理启动超时')); }, 15000);
+      setTimeout(() => { if (!settled) fail(new Error(i18n.t('core.agent.startTimeout', '窗口代理启动超时'))); }, 15000);
     });
     return this.ready;
   }
@@ -92,7 +93,7 @@ class WinAgent extends EventEmitter {
       sock.on('close', () => {
         this.sock = null;
         this.ready = null;
-        this._failAll('窗口代理连接断开');
+        this._failAll(i18n.t('core.agent.disconnected', '窗口代理连接断开'));
       });
       this.sock = sock;
       this.buf = '';
@@ -127,9 +128,9 @@ class WinAgent extends EventEmitter {
   /** 发送一条命令并等待回包 */
   async call(obj, timeout = CALL_TIMEOUT) {
     await this.ensure();
-    if (!this.sock) throw new Error('窗口代理未连接');
+    if (!this.sock) throw new Error(i18n.t('core.agent.notConnected', '窗口代理未连接'));
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`窗口代理超时: ${obj.cmd}`)), timeout);
+      const timer = setTimeout(() => reject(new Error(i18n.t('core.agent.callTimeout', '窗口代理超时: {cmd}', { cmd: obj.cmd }))), timeout);
       this.pending.push({ resolve, reject, timer });
       this.sock.write(`${JSON.stringify(obj)}\n`);
     });

@@ -23,6 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const i18n = require('../i18n');
 
 const DRIVER_FORMAT = 'apkstart-driver/1';
 const MAX_DRIVER_BYTES = 256 * 1024;
@@ -60,6 +61,17 @@ const FORBIDDEN_ARGS = {
   '-avd': 'AVD 名由 ApkStart 管理',
   '-port': '端口由 ApkStart 动态分配',
   '-http-proxy': '代理请走系统设置',
+};
+
+/** 拒绝原因的 i18n key（翻译放到报错时才做，避免模块加载时把语言定死） */
+const FORBIDDEN_I18N = {
+  '-wipe-data': 'core.drv.forbidWipeData',
+  '-datadir': 'core.drv.forbidDatadir',
+  '-sysdir': 'core.drv.forbidSysdir',
+  '-partition-size': 'core.drv.forbidPartitionSize',
+  '-avd': 'core.drv.forbidAvd',
+  '-port': 'core.drv.forbidPort',
+  '-http-proxy': 'core.drv.forbidProxy',
 };
 
 /** 驱动能改的 config.ini 键 */
@@ -155,11 +167,11 @@ function inRange(value, range) {
 function validateMatch(match, errors) {
   if (match === undefined) return {};
   if (!isObj(match)) {
-    errors.push('match 必须是对象');
+    errors.push(i18n.t('core.drv.matchNotObject', 'match 必须是对象'));
     return {};
   }
   for (const k of Object.keys(match)) {
-    if (!MATCH_KEYS.has(k)) errors.push(`match.${k} 不是支持的匹配条件`);
+    if (!MATCH_KEYS.has(k)) errors.push(i18n.t('core.drv.unsupportedMatchKey', 'match.{key} 不是支持的匹配条件', { key: k }));
   }
   const out = {};
   if (match.any !== undefined) out.any = !!match.any;
@@ -169,19 +181,19 @@ function validateMatch(match, errors) {
   if (match.cpuVendor !== undefined) out.cpuVendor = asArray(match.cpuVendor).map((v) => String(v).toLowerCase());
   if (match.accel !== undefined) out.accel = asArray(match.accel).map((v) => String(v).toLowerCase());
   if (match.gpuName !== undefined) {
-    if (!safeRegex(match.gpuName)) errors.push('match.gpuName 不是合法正则（且长度需 ≤200）');
+    if (!safeRegex(match.gpuName)) errors.push(i18n.t('core.drv.badGpuNameRegex', 'match.gpuName 不是合法正则（且长度需 ≤200）'));
     else out.gpuName = String(match.gpuName);
   }
   for (const k of ['osBuild', 'totalMB', 'cores', 'emulatorVersion']) {
     if (match[k] === undefined) continue;
     if (!isObj(match[k]) && typeof match[k] !== 'number' && typeof match[k] !== 'string') {
-      errors.push(`match.${k} 必须是数字或 {min,max}`);
+      errors.push(i18n.t('core.drv.matchRangeType', 'match.{key} 必须是数字或 {min,max}', { key: k }));
       continue;
     }
     if (isObj(match[k])) {
       const bad = ['min', 'max'].filter((x) => match[k][x] !== undefined && !Number.isFinite(Number(match[k][x])));
       if (bad.length) {
-        errors.push(`match.${k}.${bad.join('/')} 必须是数字`);
+        errors.push(i18n.t('core.drv.matchRangePart', 'match.{key}.{part} 必须是数字', { key: k, part: bad.join('/') }));
         continue;
       }
       out[k] = { min: match[k].min, max: match[k].max };
@@ -196,7 +208,7 @@ function validateArgs(args, errors) {
   const out = [];
   if (args === undefined) return out;
   if (!Array.isArray(args)) {
-    errors.push('effect.emulatorArgs 必须是字符串数组');
+    errors.push(i18n.t('core.drv.argsNotArray', 'effect.emulatorArgs 必须是字符串数组'));
     return out;
   }
   for (const raw of args) {
@@ -206,21 +218,24 @@ function validateArgs(args, errors) {
     const flag = eq > 0 ? s.slice(0, eq) : s;
     const value = eq > 0 ? s.slice(eq + 1) : '';
     if (FORBIDDEN_ARGS[flag]) {
-      errors.push(`emulatorArgs 不允许 ${flag}：${FORBIDDEN_ARGS[flag]}`);
+      errors.push(i18n.t('core.drv.argForbidden', 'emulatorArgs 不允许 {flag}：{reason}', {
+        flag,
+        reason: i18n.t(FORBIDDEN_I18N[flag] || '', FORBIDDEN_ARGS[flag]),
+      }));
       continue;
     }
     if (eq < 0) {
-      if (!FLAG_ONLY.has(flag)) errors.push(`emulatorArgs 不支持单独的参数 ${flag}（带值的请写成 ${flag}=值）`);
+      if (!FLAG_ONLY.has(flag)) errors.push(i18n.t('core.drv.argFlagNeedsValue', 'emulatorArgs 不支持单独的参数 {flag}（带值的请写成 {flag}=值）', { flag }));
       else out.push({ flag, value: '' });
       continue;
     }
     const rule = ARG_RULES[flag];
     if (!rule) {
-      errors.push(`emulatorArgs 不支持 ${flag}`);
+      errors.push(i18n.t('core.drv.argUnsupported', 'emulatorArgs 不支持 {flag}', { flag }));
       continue;
     }
     if (!rule.test(value)) {
-      errors.push(`emulatorArgs 的 ${flag} 取值不合法：${value}`);
+      errors.push(i18n.t('core.drv.argBadValue', 'emulatorArgs 的 {flag} 取值不合法：{value}', { flag, value }));
       continue;
     }
     out.push({ flag, value });
@@ -232,18 +247,18 @@ function validateIni(ini, errors) {
   const out = {};
   if (ini === undefined) return out;
   if (!isObj(ini)) {
-    errors.push('effect.configIni 必须是对象');
+    errors.push(i18n.t('core.drv.iniNotObject', 'effect.configIni 必须是对象'));
     return out;
   }
   for (const [k, v] of Object.entries(ini)) {
     const rule = INI_RULES[k];
     if (!rule) {
-      errors.push(`configIni 不支持 ${k}（会破坏数据分区 / 落点的键一律拒绝）`);
+      errors.push(i18n.t('core.drv.iniUnsupported', 'configIni 不支持 {key}（会破坏数据分区 / 落点的键一律拒绝）', { key: k }));
       continue;
     }
     const s = String(v);
     if (!rule.test(s)) {
-      errors.push(`configIni 的 ${k} 取值不合法：${s}`);
+      errors.push(i18n.t('core.drv.iniBadValue', 'configIni 的 {key} 取值不合法：{value}', { key: k, value: s }));
       continue;
     }
     out[k] = s;
@@ -255,17 +270,17 @@ function validateEnv(env, errors) {
   const out = {};
   if (env === undefined) return out;
   if (!isObj(env)) {
-    errors.push('effect.env 必须是对象');
+    errors.push(i18n.t('core.drv.envNotObject', 'effect.env 必须是对象'));
     return out;
   }
   for (const [k, v] of Object.entries(env)) {
     if (!ENV_NAME_RULES.some((re) => re.test(k))) {
-      errors.push(`env 不允许设置 ${k}（只放行 ANDROID_/QEMU_/LIBGL_/MESA_/EMUGL_ 前缀）`);
+      errors.push(i18n.t('core.drv.envUnsupported', 'env 不允许设置 {key}（只放行 ANDROID_/QEMU_/LIBGL_/MESA_/EMUGL_ 前缀）', { key: k }));
       continue;
     }
     const s = String(v);
     if (s.length > 200 || /[\r\n\0]/.test(s)) {
-      errors.push(`env.${k} 的取值不合法（长度 ≤200，且不能含换行）`);
+      errors.push(i18n.t('core.drv.envBadValue', 'env.{key} 的取值不合法（长度 ≤200，且不能含换行）', { key: k }));
       continue;
     }
     out[k] = s;
@@ -283,50 +298,50 @@ function validateEnv(env, errors) {
 function validateDriver(raw, { file = '' } = {}) {
   const errors = [];
   const where = file ? `${file}: ` : '';
-  if (!isObj(raw)) return { ok: false, errors: [`${where}驱动必须是 JSON 对象`], driver: null };
+  if (!isObj(raw)) return { ok: false, errors: [i18n.t('core.drv.rawNotObject', '{where}驱动必须是 JSON 对象', { where })], driver: null };
 
   if (raw.format !== DRIVER_FORMAT) {
-    errors.push(`${where}format 必须是 "${DRIVER_FORMAT}"（当前 ${JSON.stringify(raw.format)}）`);
+    errors.push(i18n.t('core.drv.badFormat', '{where}format 必须是 "{format}"（当前 {current}）', { where, format: DRIVER_FORMAT, current: JSON.stringify(raw.format) }));
   }
   const id = String(raw.id || '').trim();
   if (!/^[a-z0-9][a-z0-9._-]{2,63}$/i.test(id)) {
-    errors.push(`${where}id 必须由字母数字和 . _ - 组成，3~64 个字符（例如 amd-igpu-swangle）`);
+    errors.push(i18n.t('core.drv.badId', '{where}id 必须由字母数字和 . _ - 组成，3~64 个字符（例如 amd-igpu-swangle）', { where }));
   }
   const name = String(raw.name || '').trim();
-  if (!name || name.length > 80) errors.push(`${where}name 必填，且不超过 80 字`);
+  if (!name || name.length > 80) errors.push(i18n.t('core.drv.badName', '{where}name 必填，且不超过 80 字', { where }));
   const version = String(raw.version || '').trim();
-  if (!/^\d+(\.\d+){0,3}(-[A-Za-z0-9.]+)?$/.test(version)) errors.push(`${where}version 必须形如 1.0.0`);
+  if (!/^\d+(\.\d+){0,3}(-[A-Za-z0-9.]+)?$/.test(version)) errors.push(i18n.t('core.drv.badVersion', '{where}version 必须形如 1.0.0', { where }));
   if (raw.priority !== undefined && (!Number.isFinite(Number(raw.priority)) || Math.abs(Number(raw.priority)) > 100)) {
-    errors.push(`${where}priority 必须是 -100 ~ 100 的数字`);
+    errors.push(i18n.t('core.drv.badPriority', '{where}priority 必须是 -100 ~ 100 的数字', { where }));
   }
 
   const match = validateMatch(raw.match, errors);
   if (raw.match !== undefined && isObj(raw.match) && Object.keys(raw.match).length === 0) {
-    errors.push(`${where}match 不能是空对象；如果要匹配所有机器请写 {"any": true}`);
+    errors.push(i18n.t('core.drv.emptyMatch', '{where}match 不能是空对象；如果要匹配所有机器请写 {"any": true}', { where }));
   }
   const effectRaw = isObj(raw.effect) ? raw.effect : null;
-  if (!effectRaw) errors.push(`${where}effect 必须是对象`);
+  if (!effectRaw) errors.push(i18n.t('core.drv.effectNotObject', '{where}effect 必须是对象', { where }));
   let effect = {
     gpuMode: '', forceTcg: null, args: [], ini: {}, env: {}, notes: [],
   };
   if (effectRaw) {
     for (const k of Object.keys(effectRaw)) {
-      if (!EFFECT_KEYS.has(k)) errors.push(`${where}effect.${k} 不是支持的字段`);
+      if (!EFFECT_KEYS.has(k)) errors.push(i18n.t('core.drv.unsupportedEffectKey', '{where}effect.{key} 不是支持的字段', { where, key: k }));
     }
     if (effectRaw.gpuMode !== undefined) {
       const v = String(effectRaw.gpuMode);
-      if (!ARG_RULES['-gpu'].test(v)) errors.push(`${where}effect.gpuMode 取值不合法：${v}`);
+      if (!ARG_RULES['-gpu'].test(v)) errors.push(i18n.t('core.drv.badGpuMode', '{where}effect.gpuMode 取值不合法：{value}', { where, value: v }));
       else effect.gpuMode = v;
     }
     if (effectRaw.forceTcg !== undefined) {
-      if (typeof effectRaw.forceTcg !== 'boolean') errors.push(`${where}effect.forceTcg 必须是 true/false`);
+      if (typeof effectRaw.forceTcg !== 'boolean') errors.push(i18n.t('core.drv.badForceTcg', '{where}effect.forceTcg 必须是 true/false', { where }));
       else effect.forceTcg = effectRaw.forceTcg;
     }
     effect.args = validateArgs(effectRaw.emulatorArgs, errors);
     effect.ini = validateIni(effectRaw.configIni, errors);
     effect.env = validateEnv(effectRaw.env, errors);
     if (effectRaw.notes !== undefined) {
-      if (!Array.isArray(effectRaw.notes)) errors.push(`${where}effect.notes 必须是字符串数组`);
+      if (!Array.isArray(effectRaw.notes)) errors.push(i18n.t('core.drv.notesNotArray', '{where}effect.notes 必须是字符串数组', { where }));
       else {
         effect.notes = effectRaw.notes
           .map((n) => String(n).trim())
@@ -529,12 +544,12 @@ function loadDir(dir) {
     try {
       const st = fs.statSync(file);
       if (st.size > MAX_DRIVER_BYTES) {
-        out.errors.push({ file, errors: [`文件过大（${st.size} 字节，上限 ${MAX_DRIVER_BYTES}）`] });
+        out.errors.push({ file, errors: [i18n.t('core.drv.fileTooBig', '文件过大（{size} 字节，上限 {limit}）', { size: st.size, limit: MAX_DRIVER_BYTES })] });
         continue;
       }
       raw = JSON.parse(fs.readFileSync(file, 'utf8'));
     } catch (e) {
-      out.errors.push({ file, errors: [`读不出来：${e.message}`] });
+      out.errors.push({ file, errors: [i18n.t('core.drv.readFailed', '读不出来：{message}', { message: e.message })] });
       continue;
     }
     const r = validateDriver(raw, { file });
@@ -569,10 +584,10 @@ function importDriver(srcFile, destDir) {
   let raw;
   try {
     const st = fs.statSync(srcFile);
-    if (st.size > MAX_DRIVER_BYTES) return { ok: false, errors: ['文件过大，驱动最多 256 KB'] };
+    if (st.size > MAX_DRIVER_BYTES) return { ok: false, errors: [i18n.t('core.drv.importTooBig', '文件过大，驱动最多 256 KB')] };
     raw = JSON.parse(fs.readFileSync(srcFile, 'utf8'));
   } catch (e) {
-    return { ok: false, errors: [`读不出来：${e.message}`] };
+    return { ok: false, errors: [i18n.t('core.drv.readFailed', '读不出来：{message}', { message: e.message })] };
   }
   const r = validateDriver(raw, { file: path.basename(srcFile) });
   if (!r.ok) return { ok: false, errors: r.errors };
@@ -582,7 +597,7 @@ function importDriver(srcFile, destDir) {
     fs.writeFileSync(dest, `${JSON.stringify(raw, null, 2)}\n`, 'utf8');
     return { ok: true, file: dest, driver: r.driver };
   } catch (e) {
-    return { ok: false, errors: [`写入失败：${e.message}`] };
+    return { ok: false, errors: [i18n.t('core.drv.writeFailed', '写入失败：{message}', { message: e.message })] };
   }
 }
 
@@ -590,15 +605,15 @@ function importDriver(srcFile, destDir) {
  * 导出一份「本机模板」：把当前机器的画像填进 match，
  * 用户只要改 effect 就能做出「只对我这台机器生效」的驱动。
  */
-function templateFromHost(host = {}, { name = '我的机器' } = {}) {
+function templateFromHost(host = {}, { name = i18n.t('core.drv.templateDefaultName', '我的机器') } = {}) {
   const gpu = host.gpuVendor && host.gpuVendor !== 'unknown' ? host.gpuVendor : 'unknown';
   return {
     format: DRIVER_FORMAT,
     id: `my-${gpu}-${toInt(host.osBuild) || 'custom'}`.toLowerCase().replace(/[^a-z0-9._-]/g, '-'),
-    name: `${name} 兼容补丁`,
+    name: i18n.t('core.drv.templateName', '{name} 兼容补丁', { name }),
     version: '1.0.0',
     author: '',
-    description: '由 ApkStart「导出本机模板」生成：match 已经按这台机器填好，按需修改 effect 即可。',
+    description: i18n.t('core.drv.templateDescription', '由 ApkStart「导出本机模板」生成：match 已经按这台机器填好，按需修改 effect 即可。'),
     priority: 0,
     match: {
       platform: host.platform || process.platform,
@@ -612,7 +627,7 @@ function templateFromHost(host = {}, { name = '我的机器' } = {}) {
       emulatorArgs: [],
       configIni: {},
       env: {},
-      notes: ['示例：把 gpuMode 改成 host / software 或打开 forceTcg 试试'],
+      notes: [i18n.t('core.drv.templateNote', '示例：把 gpuMode 改成 host / software 或打开 forceTcg 试试')],
     },
   };
 }

@@ -17,6 +17,7 @@ const net = require('net');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const { memoryLimits } = require('./resources');
+const i18n = require('../i18n');
 
 const ASCII = /^[\x20-\x7e]*$/;
 const isAsciiPath = (p) => ASCII.test(String(p || ''));
@@ -309,13 +310,13 @@ function planVariants(profile) {
   const safeGpu = gpus.find((g) => /software|swiftshader/.test(g)) || firstGpu;
   const ordered = [firstGpu, ...gpus.filter((g) => g !== firstGpu && /swiftshader|swangle/.test(g))].slice(0, 2);
   for (const gpu of ordered) {
-    out.push({ ...profile, gpu, label: `${gpu} / ${profile.accel === 'auto' ? '硬件加速' : '软件模拟'}`, wipe: false, snapshot: true });
+    out.push({ ...profile, gpu, label: `${gpu} / ${profile.accel === 'auto' ? i18n.t('core.doctor.hwAccel', '硬件加速') : i18n.t('core.doctor.swRender', '软件模拟')}`, wipe: false, snapshot: true });
   }
   out.push({
     ...profile,
     gpu: safeGpu,
     accel: 'off',
-    label: '关闭加速的软件模拟（慢，但兼容性最好）',
+    label: i18n.t('core.doctor.variant.softwareOff', '关闭加速的软件模拟（慢，但兼容性最好）'),
     wipe: false,
     snapshot: false,
   });
@@ -326,7 +327,7 @@ function planVariants(profile) {
     memoryMB: 2048,
     cores: 2,
     dataMB: Math.min(profile.dataMB, 2048),
-    label: '保守冷启动（最小内存 + 清快照）',
+    label: i18n.t('core.doctor.variant.conservative', '保守冷启动（最小内存 + 清快照）'),
     // 这里**绝对不能** wipe：以前写的是 wipe:true，而磁盘写满时每次尝试都会失败，
     // 于是连续重试把用户已装的应用和存档一起「清快照 + 清数据」了 ——
     // 「磁盘满了，结果打开 ApkStart 应用全没了」就是这么发生的。
@@ -510,20 +511,26 @@ const RULES = [
 function diagnose(lines) {
   const text = (Array.isArray(lines) ? lines.join('\n') : String(lines || '')).slice(-24000);
   for (const r of RULES) {
-    if (r.re.test(text)) return { code: r.code, title: r.title, hint: r.hint };
+    if (r.re.test(text)) {
+      // i18n 必须在调用时求值（模块加载时语言可能还没切到 fr），故索引键在命中时才拼。
+      const i = RULES.indexOf(r);
+      return {
+        code: r.code,
+        title: i18n.t(`core.diag.${i}.title`, r.title),
+        hint: i18n.t(`core.diag.${i}.hint`, r.hint),
+      };
+    }
   }
   return {
     code: 'UNKNOWN',
-    title: '运行时未能完成开机',
-    hint: '已自动按多种参数组合重试。可点「导出诊断报告」把日志发给作者定位。',
+    title: i18n.t('core.diag.unknown.title', '运行时未能完成开机'),
+    hint: i18n.t('core.diag.unknown.hint', '已自动按多种参数组合重试。可点「导出诊断报告」把日志发给作者定位。'),
   };
 }
 
 /** 人类可读的一行摘要，放在设置页让高级用户知道自动选了什么 */
 function describeProfile(p) {
-  return `自动：${(p.memoryMB / 1024).toFixed(1)}GB 内存 · ${p.cores} 核 · ${p.gpu} 渲染 · `
-    + `${p.accelOk ? '硬件加速' : '软件模拟'} · ${p.snapshot ? '按需快照' : '冷启动'}`
-    + `${p.lite ? ' · 轻量容器' : ''} · 端口 ${p.port}`;
+  return i18n.t('core.doctor.profileDesc', '自动：{mem}GB 内存 · {cores} 核 · {gpu} 渲染 · {accel} · {snap}{lite} · 端口 {port}', { mem: (p.memoryMB / 1024).toFixed(1), cores: p.cores, gpu: p.gpu, accel: p.accelOk ? i18n.t('core.doctor.hwAccel', '硬件加速') : i18n.t('core.doctor.swRender', '软件模拟'), snap: p.snapshot ? i18n.t('core.doctor.snapshotOn', '按需快照') : i18n.t('core.doctor.coldBoot', '冷启动'), lite: p.lite ? i18n.t('core.doctor.liteContainer', ' · 轻量容器') : '', port: p.port });
 }
 
 /** 导出诊断报告（纯文本，便于发邮件/贴 issue） */
@@ -533,24 +540,24 @@ function writeReport({ dataDir, profile, logLines = [], extra = {} }) {
   const file = path.join(dir, `diagnostic-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
   const d = diagnose(logLines);
   const body = [
-    'ApkStart 诊断报告',
-    `生成时间：${new Date().toLocaleString()}`,
+    i18n.t('core.doctor.report.title', 'ApkStart 诊断报告'),
+    i18n.t('core.doctor.report.time', '生成时间：{when}', { when: new Date().toLocaleString() }),
     '',
-    '== 本机 ==',
+    i18n.t('core.doctor.report.host', '== 本机 =='),
     JSON.stringify(hostInfo(), null, 2),
     '',
-    '== 自动配置 ==',
+    i18n.t('core.doctor.report.config', '== 自动配置 =='),
     JSON.stringify(profile || {}, null, 2),
     describeProfile(profile || chooseProfile()),
     '',
-    '== 诊断 ==',
+    i18n.t('core.doctor.report.diagnosis', '== 诊断 =='),
     `${d.code}：${d.title}`,
     d.hint,
     '',
-    '== 附加信息 ==',
+    i18n.t('core.doctor.report.extra', '== 附加信息 =='),
     JSON.stringify(extra, null, 2),
     '',
-    '== 运行时日志（末尾 300 行）==',
+    i18n.t('core.doctor.report.log', '== 运行时日志（末尾 300 行）=='),
     ...(Array.isArray(logLines) ? logLines.slice(-300) : String(logLines || '').split('\n')),
   ].join('\n');
   fs.writeFileSync(file, body, 'utf8');
