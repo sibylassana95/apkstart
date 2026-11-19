@@ -934,6 +934,7 @@ function openManual(payload = {}) {
           contextIsolation: true,
           sandbox: false,
           spellcheck: false,
+          additionalArguments: ['--apkstart-lang=' + i18n.getLang()],
         },
       });
       manualWindow.on('closed', () => { manualWindow = null; });
@@ -948,8 +949,12 @@ function openManual(payload = {}) {
         if (/^https?:\/\//i.test(url)) shell.openExternal(url);
       });
     }
-    manualWindow.setTitle(`ApkStart 使用手册 · ${target.title}`);
-    manualWindow.loadFile(path.join(__dirname, 'ui', 'manual.html'), { hash: target.anchor });
+    const manualLang = i18n.getLang();
+    const manualFile = manualLang === 'fr' ? 'manual.fr.html' : 'manual.html';
+    manualWindow.setTitle(manualLang === 'fr'
+      ? `ApkStart — Manuel d'utilisation · ${target.title}`
+      : `ApkStart 使用手册 · ${target.title}`);
+    manualWindow.loadFile(path.join(__dirname, 'ui', manualFile), { hash: target.anchor });
     manualWindow.once('ready-to-show', () => {
       if (!manualWindow || manualWindow.isDestroyed()) return;
       manualWindow.show();

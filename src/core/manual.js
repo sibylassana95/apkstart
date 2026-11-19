@@ -9,25 +9,32 @@
  * 用户手点的「教程」按钮。三路都汇到 resolve()，保证落到同一节。
  */
 
+const anchors = require('../i18n/manual-anchors.json');
+const i18n = require('../i18n');
+
 /** 章节 id 与 src/ui/manual.html 的锚点一一对应（由 docs/build-manual-html.py 生成） */
+// anchor 改用 manual-anchors.json 里的 ASCII 稳定 id，中文/法文两份 HTML 共用；
+// title 保留中文作为兜底（fr 的 titleFr 为空时回退到这里）。
 const TOPICS = Object.freeze({
-  overview: { id: 'overview', anchor: 'apkstart-产品使用手册与问题解决方案', title: '使用手册 · 目录' },
-  accel: { id: 'accel', anchor: '6-1-提示-未启用硬件加速-开机很慢', title: '未启用硬件加速 / 开机很慢' },
-  install: { id: 'install', anchor: '6-2-安装失败-install_failed_', title: '安装失败（INSTALL_FAILED_*）' },
-  arm: { id: 'arm', anchor: '6-3-系统镜像没有-arm-转译层-arm-应用装不上或闪退', title: 'ARM 转译层 / ARM 应用装不上' },
-  adb: { id: 'adb', anchor: '6-4-adb-未授权-允许-usb-调试', title: 'adb 未授权（允许 USB 调试）' },
-  startup: { id: 'startup', anchor: '6-5-双击图标没反应-一直转圈-出现带旋转按钮的窗口', title: '打不开 / 带旋转按钮的窗口' },
-  other: { id: 'other', anchor: '6-6-其它启动类问题速查表', title: '其它启动类问题速查表' },
-  sound: { id: 'sound', anchor: '6-7-应用没有声音-声音很小', title: '应用没有声音 / 声音很小' },
-  diagnose: { id: 'diagnose', anchor: '5-4-内置使用手册与自动教程', title: '内置手册与自动教程' },
-  settings: { id: 'settings', anchor: '3-6-设置页导航', title: '设置页导航' },
-  storage: { id: 'storage', anchor: '8-数据与目录说明', title: '数据与目录说明' },
-  network: { id: 'network', anchor: '5-2-自动检测-自动-debug', title: '自动检测与网络修复' },
+  overview: { id: 'overview', anchor: anchors.overview.anchor, title: anchors.overview.titleZh },
+  accel: { id: 'accel', anchor: anchors.accel.anchor, title: anchors.accel.titleZh },
+  install: { id: 'install', anchor: anchors.install.anchor, title: anchors.install.titleZh },
+  arm: { id: 'arm', anchor: anchors.arm.anchor, title: anchors.arm.titleZh },
+  adb: { id: 'adb', anchor: anchors.adb.anchor, title: anchors.adb.titleZh },
+  startup: { id: 'startup', anchor: anchors.startup.anchor, title: anchors.startup.titleZh },
+  other: { id: 'other', anchor: anchors.other.anchor, title: anchors.other.titleZh },
+  sound: { id: 'sound', anchor: anchors.sound.anchor, title: anchors.sound.titleZh },
+  diagnose: { id: 'diagnose', anchor: anchors.diagnose.anchor, title: anchors.diagnose.titleZh },
+  settings: { id: 'settings', anchor: anchors.settings.anchor, title: anchors.settings.titleZh },
+  storage: { id: 'storage', anchor: anchors.storage.anchor, title: anchors.storage.titleZh },
+  network: { id: 'network', anchor: anchors.network.anchor, title: anchors.network.titleZh },
 });
 
-const ARM_RE = /NO_MATCHING_ABIS|DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|arm64-v8a|armeabi-v7a|ARM 翻译层|ARM 转译层/i;
-const ADB_RE = /ADB_UNAUTHORIZED|unauthorized|允许 USB 调试|调试授权/i;
-const SOUND_RE = /audio|AUDIO|sound|声音|音量|静音|Audiosrv/i;
+// 法语关键词与中文/英文关键词并存：引擎报错本身多为英文，但用户手点的
+// 标题/详情可能是中文或法语，三语都要能命中同一个章节。
+const ARM_RE = /NO_MATCHING_ABIS|DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|arm64-v8a|armeabi-v7a|ARM 翻译层|ARM 转译层|translation ARM|traduction ARM|couche (de )?traduction ARM|ARM 应用|application ARM/i;
+const ADB_RE = /ADB_UNAUTHORIZED|unauthorized|允许 USB 调试|调试授权|autorisation USB|autoriser le débogage USB|débogage USB|non autorisé|appareil non autorisé/i;
+const SOUND_RE = /audio|AUDIO|sound|声音|音量|静音|Audiosrv|\bson\b|silencieux|\bvolume\b|coupé le son|pas de son/i;
 
 /** 自动检测的问题 code → 章节 id */
 const ISSUE_MAP = Object.freeze({
@@ -60,11 +67,11 @@ function topicByText(text) {
   if (ARM_RE.test(s)) return 'arm';
   if (ADB_RE.test(s)) return 'adb';
   if (SOUND_RE.test(s)) return 'sound';
-  if (/INSTALL_FAILED|INSTALL_PARSE|签名|安装包|APK 损坏/i.test(s)) return 'install';
-  if (/硬件加速|虚拟机监控程序|WHPX|AEHD|hypervisor|accel/i.test(s)) return 'accel';
-  if (/attach failed|emu:0|旋转|嵌入|打不开|没反应|图标/i.test(s)) return 'startup';
-  if (/磁盘|空间|disk|共享目录|数据分区/i.test(s)) return 'storage';
-  if (/网络|联网|DNS|下载源/i.test(s)) return 'network';
+  if (/INSTALL_FAILED|INSTALL_PARSE|签名|安装包|APK 损坏|échec d'installation|signature|paquet d'installation|APK corrompu|installation a échoué/i.test(s)) return 'install';
+  if (/硬件加速|虚拟机监控程序|WHPX|AEHD|hypervisor|accel|accélération matérielle/i.test(s)) return 'accel';
+  if (/attach failed|emu:0|旋转|嵌入|打不开|没反应|图标|ne s'ouvre pas|ne répond pas|fenêtre de rotation|icône|rotation/i.test(s)) return 'startup';
+  if (/磁盘|空间|disk|共享目录|数据分区|disque|espace|dossier partagé|partition de données/i.test(s)) return 'storage';
+  if (/网络|联网|DNS|下载源|réseau|connexion|source de téléchargement/i.test(s)) return 'network';
   return 'overview';
 }
 
@@ -89,8 +96,8 @@ function topicForError(text) {
   if (ARM_RE.test(s)) return TOPICS.arm;
   if (ADB_RE.test(s)) return TOPICS.adb;
   if (SOUND_RE.test(s)) return TOPICS.sound;
-  if (/INSTALL_|PARSE_FAILED|安装失败|签名|安装包/.test(s)) return TOPICS.install;
-  if (/attach failed|emu:0|device not found|旋转窗口/.test(s)) return TOPICS.startup;
+  if (/INSTALL_|PARSE_FAILED|安装失败|签名|安装包|échec d'installation|installation a échoué|signature|paquet d'installation/.test(s)) return TOPICS.install;
+  if (/attach failed|emu:0|device not found|旋转窗口|ne s'ouvre pas|ne répond pas/.test(s)) return TOPICS.startup;
   return topicByText(s) === 'overview' ? TOPICS.install : TOPICS[topicByText(s)];
 }
 
@@ -108,10 +115,22 @@ function resolve(payload) {
       : (p.issue || { code: p.code, title: p.title, detail: p.detail });
     topic = topicForIssue(issue);
   } else if (p.error || p.message || p.text) topic = topicForError(p.error || p.message || p.text);
+  // 标题跟随界面语言；fr 缺译文时回退到 TOPICS 里的中文标题。
+  const meta = anchors[topic.id];
+  let title = topic.title;
+  if (meta) {
+    if (i18n.getLang() === 'fr') {
+      if (meta.titleFr && String(meta.titleFr).trim()) title = meta.titleFr;
+    } else if (meta.titleZh && String(meta.titleZh).trim()) {
+      title = meta.titleZh;
+    }
+    // 法语标题来自 md 的章节标题，带「6.3 」这类编号；窗口标题里去掉更清爽。
+    title = String(title).replace(/^\d+(?:\.\d+)*\s+/, '');
+  }
   return {
     id: topic.id,
     anchor: topic.anchor,
-    title: topic.title,
+    title,
     reason: String(p.reason || ''),
   };
 }

@@ -1,14 +1,14 @@
 {
-  "overview": { "id": "overview", "titleZh": "使用手册 · 目录", "titleFr": "", "anchor": "overview" },
-  "accel": { "id": "accel", "titleZh": "未启用硬件加速 / 开机很慢", "titleFr": "", "anchor": "accel" },
-  "install": { "id": "install", "titleZh": "安装失败（INSTALL_FAILED_*）", "titleFr": "", "anchor": "install-failed" },
-  "arm": { "id": "arm", "titleZh": "ARM 转译层 / ARM 应用装不上", "titleFr": "", "anchor": "arm-translation" },
-  "adb": { "id": "adb", "titleZh": "adb 未授权（允许 USB 调试）", "titleFr": "", "anchor": "adb-unauthorized" },
-  "startup": { "id": "startup", "titleZh": "打不开 / 带旋转按钮的窗口", "titleFr": "", "anchor": "startup" },
-  "other": { "id": "other", "titleZh": "其它启动类问题速查表", "titleFr": "", "anchor": "other" },
-  "sound": { "id": "sound", "titleZh": "应用没有声音 / 声音很小", "titleFr": "", "anchor": "sound" },
-  "diagnose": { "id": "diagnose", "titleZh": "内置手册与自动教程", "titleFr": "", "anchor": "diagnose" },
-  "settings": { "id": "settings", "titleZh": "设置页导航", "titleFr": "", "anchor": "settings" },
-  "storage": { "id": "storage", "titleZh": "数据与目录说明", "titleFr": "", "anchor": "storage" },
-  "network": { "id": "network", "titleZh": "自动检测与网络修复", "titleFr": "", "anchor": "network" }
+  "overview": { "id": "overview", "titleZh": "使用手册 · 目录", "titleFr": "Table des matières", "anchor": "overview" },
+  "accel": { "id": "accel", "titleZh": "未启用硬件加速 / 开机很慢", "titleFr": "6.1 Message « Accélération matérielle non activée » / démarrage très lent", "anchor": "accel" },
+  "install": { "id": "install", "titleZh": "安装失败（INSTALL_FAILED_*）", "titleFr": "6.2 Échec de l'installation (INSTALL_FAILED_*)", "anchor": "install-failed" },
+  "arm": { "id": "arm", "titleZh": "ARM 转译层 / ARM 应用装不上", "titleFr": "6.3 L'image système ne contient pas la couche de traduction ARM / les applications ARM ne s'installent pas ou plantent", "anchor": "arm-translation" },
+  "adb": { "id": "adb", "titleZh": "adb 未授权（允许 USB 调试）", "titleFr": "6.4 adb non autorisé (autoriser le débogage USB)", "anchor": "adb-unauthorized" },
+  "startup": { "id": "startup", "titleZh": "打不开 / 带旋转按钮的窗口", "titleFr": "6.5 Double-clic sur l'icône sans effet / rotation infinie / fenêtre avec bouton de rotation", "anchor": "startup" },
+  "other": { "id": "other", "titleZh": "其它启动类问题速查表", "titleFr": "6.6 Tableau de dépannage rapide des autres problèmes de lancement", "anchor": "other" },
+  "sound": { "id": "sound", "titleZh": "应用没有声音 / 声音很小", "titleFr": "6.7 Aucun son ou son très faible dans les applications", "anchor": "sound" },
+  "diagnose": { "id": "diagnose", "titleZh": "内置手册与自动教程", "titleFr": "5.4 Manuel intégré et tutoriels automatiques", "anchor": "diagnose" },
+  "settings": { "id": "settings", "titleZh": "设置页导航", "titleFr": "3.6 Navigation dans la page des paramètres", "anchor": "settings" },
+  "storage": { "id": "storage", "titleZh": "数据与目录说明", "titleFr": "8. Données et répertoires", "anchor": "storage" },
+  "network": { "id": "network", "titleZh": "自动检测与网络修复", "titleFr": "5.2 Détection automatique (debug automatique)", "anchor": "network" }
 }

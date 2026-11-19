@@ -30,12 +30,20 @@ function assert(cond, msg) {
 const ROOT = path.join(__dirname, '..');
 const manual = require(path.join(ROOT, 'src/core/manual'));
 const html = fs.readFileSync(path.join(ROOT, 'src/ui/manual.html'), 'utf8');
+// 法语手册由 `python docs/build-manual-html.py --lang fr` 生成；生成前允许缺失。
+const frPath = path.join(ROOT, 'src/ui/manual.fr.html');
+const hasFr = fs.existsSync(frPath);
+const htmlFr = hasFr ? fs.readFileSync(frPath, 'utf8') : null;
 
 console.log('\n[内置手册 · 锚点]');
-test('每个主题的锚点都存在于随包 HTML', () => {
+test('每个主题的锚点都存在于随包 HTML（中文 + 法语）', () => {
   for (const topic of Object.values(manual.TOPICS)) {
-    assert(html.includes(`id="${topic.anchor}"`), `${topic.id} 的锚点 ${topic.anchor} 在手册里不存在`);
+    assert(html.includes(`id="${topic.anchor}"`), `${topic.id} 的锚点 ${topic.anchor} 在中文手册里不存在`);
+    if (hasFr) {
+      assert(htmlFr.includes(`id="${topic.anchor}"`), `${topic.id} 的稳定锚点 ${topic.anchor} 在法语手册 src/ui/manual.fr.html 里不存在`);
+    }
   }
+  if (!hasFr) console.log('    · 法语手册 src/ui/manual.fr.html 尚未生成，跳过法语锚点检查');
 });
 
 test('手册正文包含 0.6.2 版本号与声音章节', () => {
@@ -43,6 +51,18 @@ test('手册正文包含 0.6.2 版本号与声音章节', () => {
   assert(html.includes('应用没有声音'), '手册应有声音排障章节');
   assert(html.includes('内置使用手册与自动教程'), '手册应说明自动教程');
 });
+
+if (hasFr) {
+  test('法语手册使用 lang="fr" 且带版本号', () => {
+    assert(/<html lang="fr">/.test(htmlFr), '法语手册应声明 lang="fr"');
+    assert(htmlFr.includes('v0.6.2'), '法语手册应标注 v0.6.2');
+  });
+
+  test('法语手册含法语标题与 Sommaire 目录', () => {
+    assert(/Manuel d'utilisateur/.test(htmlFr), '法语手册应有法语标题');
+    assert(/Sommaire/.test(htmlFr), '法语手册应有 Sommaire 目录标题');
+  });
+}
 
 console.log('\n[内置手册 · 自动检测问题 → 章节]');
 test('硬件加速问题定位到 6.1', () => {
@@ -107,6 +127,7 @@ test('主进程注册了 manual:open，preload 暴露了 openManual', () => {
   assert(/ipcMain\.handle\('manual:open'/.test(main), '主进程未注册 manual:open');
   assert(/openManual:\s*\(payload\)/.test(preload), 'preload 未暴露 openManual');
   assert(/new BrowserWindow\([\s\S]*manual\.html/.test(main), '主进程未创建手册窗口');
+  assert(/manual\.fr\.html/.test(main), '主进程缺少法语手册文件名 manual.fr.html');
 });
 
 test('标题栏 / 关于页都有手册入口', () => {
