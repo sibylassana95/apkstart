@@ -19,8 +19,8 @@ const i18n = require('../i18n');
 
 const PRESETS = {
   fps: {
-    label: i18n.t('core.key.fpsLabel', 'FPS / 射击类'),
-    desc: i18n.t('core.key.fpsDesc', 'WASD 控制左侧虚拟摇杆区域，J 射击，K 换弹，Space 跳跃'),
+    get label() { return i18n.t('core.key.fpsLabel', 'FPS / 射击类'); },
+    get desc() { return i18n.t('core.key.fpsDesc', 'WASD 控制左侧虚拟摇杆区域，J 射击，K 换弹，Space 跳跃'); },
     mappings: [
       { key: 'w', action: 'tap', x: 0.15, y: 0.75 },
       { key: 'a', action: 'tap', x: 0.08, y: 0.82 },
@@ -32,8 +32,8 @@ const PRESETS = {
     ],
   },
   rpg: {
-    label: i18n.t('core.key.rpgLabel', 'RPG / 动作类'),
-    desc: i18n.t('core.key.rpgDesc', 'WASD 移动，J 攻击，K 技能，L 大招，Space 确认/对话'),
+    get label() { return i18n.t('core.key.rpgLabel', 'RPG / 动作类'); },
+    get desc() { return i18n.t('core.key.rpgDesc', 'WASD 移动，J 攻击，K 技能，L 大招，Space 确认/对话'); },
     mappings: [
       { key: 'w', action: 'tap', x: 0.15, y: 0.75 },
       { key: 'a', action: 'tap', x: 0.08, y: 0.82 },
@@ -46,8 +46,8 @@ const PRESETS = {
     ],
   },
   generic: {
-    label: i18n.t('core.key.genericLabel', '通用 / 休闲类'),
-    desc: i18n.t('core.key.genericDesc', '方向键移动，Enter 确认，Space 取消/返回'),
+    get label() { return i18n.t('core.key.genericLabel', '通用 / 休闲类'); },
+    get desc() { return i18n.t('core.key.genericDesc', '方向键移动，Enter 确认，Space 取消/返回'); },
     mappings: [
       { key: 'ArrowUp', action: 'tap', x: 0.15, y: 0.75 },
       { key: 'ArrowLeft', action: 'tap', x: 0.08, y: 0.82 },
