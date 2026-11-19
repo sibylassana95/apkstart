@@ -1,16 +1,16 @@
-'use strict';
+"use strict";
 /**
  * adb 客户端封装
  * 只做 apkstart 需要的那部分：安装 / 启动 / 停止 / 卸载 / 文件同步 / 截图
  */
-const { execFile, spawn } = require('child_process');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const crypto = require('crypto');
-const store = require('./store');
-const { autoRotateSetting } = require('./orientation');
-const i18n = require('../i18n');
+const { execFile, spawn } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const crypto = require("crypto");
+const store = require("./store");
+const { autoRotateSetting } = require("./orientation");
+const i18n = require("../i18n");
 
 /**
  * 镜像内「自动旋转」开关要写进 guest 的值（'1' 开 / '0' 关）。
@@ -19,7 +19,11 @@ const i18n = require('../i18n');
  * 这里只是让系统设置里的开关显示为「开」，满足应用读取该 setting 的期望。
  */
 function guestAutoRotate() {
-  try { return autoRotateSetting(store.getSettings()); } catch (_) { return '1'; }
+  try {
+    return autoRotateSetting(store.getSettings());
+  } catch (_) {
+    return "1";
+  }
 }
 
 /**
@@ -30,7 +34,9 @@ function guestAutoRotate() {
 const TABLET_DENSITY = 190;
 function tabletDensity() {
   try {
-    return (store.getSettings().display || {}).tabletMode !== false ? String(TABLET_DENSITY) : 'reset';
+    return (store.getSettings().display || {}).tabletMode !== false
+      ? String(TABLET_DENSITY)
+      : "reset";
   } catch (_) {
     return String(TABLET_DENSITY);
   }
@@ -43,9 +49,15 @@ function tabletDensity() {
  * 自己那份 adb 在运行时目录里，优先级永远最高（见 engine.adbPath）。
  */
 const COMMON_ADB_PATHS = [
-  path.join(process.env.LOCALAPPDATA || '', 'Android', 'Sdk', 'platform-tools', 'adb.exe'),
-  'C:/Android/platform-tools/adb.exe',
-  'C:/adb/adb.exe',
+  path.join(
+    process.env.LOCALAPPDATA || "",
+    "Android",
+    "Sdk",
+    "platform-tools",
+    "adb.exe",
+  ),
+  "C:/Android/platform-tools/adb.exe",
+  "C:/adb/adb.exe",
 ];
 
 /**
@@ -54,54 +66,121 @@ const COMMON_ADB_PATHS = [
  */
 function friendlyInstallError(raw) {
   const code = /INSTALL_[A-Z_]+/.exec(raw);
-  const tag = code ? code[0] : '';
+  const tag = code ? code[0] : "";
   const table = {
-    INSTALL_FAILED_NO_MATCHING_ABIS:
-      i18n.t('core.adb.install.NO_MATCHING_ABIS', '安装失败：这个应用只提供 ARM 原生库（多数国产应用如此），当前系统镜像没有 ARM 转译层。ApkStart 会自动切换到内置新版翻译层的兼容镜像并重试。'),
-    INSTALL_FAILED_OLDER_SDK:
-      i18n.t('core.adb.install.OLDER_SDK', '安装失败：应用要求的 Android 版本高于当前运行时（需更高系统镜像）。'),
-    INSTALL_PARSE_FAILED_NO_CERTIFICATES:
-      i18n.t('core.adb.install.NO_CERTIFICATES', '安装失败：APK 没有有效签名，无法安装。'),
-    INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES:
-      i18n.t('core.adb.install.INCONSISTENT_CERTIFICATES', '安装失败：与已安装版本签名不一致，请先卸载旧版再装。'),
-    INSTALL_FAILED_VERSION_DOWNGRADE:
-      i18n.t('core.adb.install.VERSION_DOWNGRADE', '安装失败：设备上已安装更高版本，不能降级覆盖。'),
-    INSTALL_FAILED_INSUFFICIENT_STORAGE:
-      i18n.t('core.adb.install.INSUFFICIENT_STORAGE', '安装失败：运行时磁盘空间不足，请清理后重试。'),
-    INSTALL_FAILED_INVALID_APK:
-      i18n.t('core.adb.install.INVALID_APK', '安装失败：APK 文件损坏或不完整（可能下载未完成），请重新获取。'),
-    INSTALL_FAILED_INVALID_URI: i18n.t('core.adb.install.INVALID_URI', '安装失败：APK 路径含特殊字符，请把文件移到纯英文路径后重试。'),
-    INSTALL_FAILED_ALREADY_EXISTS: i18n.t('core.adb.install.ALREADY_EXISTS', '安装失败：已存在同名应用且签名不同，请先卸载。'),
-    INSTALL_FAILED_UPDATE_INCOMPATIBLE: i18n.t('core.adb.install.UPDATE_INCOMPATIBLE', '安装失败：与已安装版本签名不一致，请先卸载旧版。'),
-    INSTALL_FAILED_DEPRECATED_SDK_VERSION:
-      i18n.t('core.adb.install.DEPRECATED_SDK_VERSION', '安装失败：这是面向很老 Android 版本的应用（targetSdk 过低），Android 14 默认禁止安装。ApkStart 会自动用官方绕过参数重试。'),
-    INSTALL_FAILED_TEST_ONLY: i18n.t('core.adb.install.TEST_ONLY', '安装失败：这是仅供测试的应用包，已自动加上测试包参数重试。'),
-    INSTALL_FAILED_MISSING_SHARED_LIBRARY: i18n.t('core.adb.install.MISSING_SHARED_LIBRARY', '安装失败：应用依赖的设备特性（如特定厂商库）在当前运行时不存在。'),
-    INSTALL_FAILED_USER_RESTRICTION: i18n.t('core.adb.install.USER_RESTRICTION', '安装失败：系统限制了安装，请重启运行时后重试。'),
-    INSTALL_FAILED_CONFLICTING_PROVIDER: i18n.t('core.adb.install.CONFLICTING_PROVIDER', '安装失败：与已有应用的 ContentProvider 冲突，请卸载冲突应用。'),
-    INSTALL_FAILED_INTERNAL_ERROR: i18n.t('core.adb.install.INTERNAL_ERROR', '安装失败：系统内部错误（常见于存储空间不足或开机未完成），请重启运行时后重试。'),
+    INSTALL_FAILED_NO_MATCHING_ABIS: i18n.t(
+      "core.adb.install.NO_MATCHING_ABIS",
+      "安装失败：这个应用只提供 ARM 原生库（多数国产应用如此），当前系统镜像没有 ARM 转译层。ApkStart 会自动切换到内置新版翻译层的兼容镜像并重试。",
+    ),
+    INSTALL_FAILED_OLDER_SDK: i18n.t(
+      "core.adb.install.OLDER_SDK",
+      "安装失败：应用要求的 Android 版本高于当前运行时（需更高系统镜像）。",
+    ),
+    INSTALL_PARSE_FAILED_NO_CERTIFICATES: i18n.t(
+      "core.adb.install.NO_CERTIFICATES",
+      "安装失败：APK 没有有效签名，无法安装。",
+    ),
+    INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES: i18n.t(
+      "core.adb.install.INCONSISTENT_CERTIFICATES",
+      "安装失败：与已安装版本签名不一致，请先卸载旧版再装。",
+    ),
+    INSTALL_FAILED_VERSION_DOWNGRADE: i18n.t(
+      "core.adb.install.VERSION_DOWNGRADE",
+      "安装失败：设备上已安装更高版本，不能降级覆盖。",
+    ),
+    INSTALL_FAILED_INSUFFICIENT_STORAGE: i18n.t(
+      "core.adb.install.INSUFFICIENT_STORAGE",
+      "安装失败：运行时磁盘空间不足，请清理后重试。",
+    ),
+    INSTALL_FAILED_INVALID_APK: i18n.t(
+      "core.adb.install.INVALID_APK",
+      "安装失败：APK 文件损坏或不完整（可能下载未完成），请重新获取。",
+    ),
+    INSTALL_FAILED_INVALID_URI: i18n.t(
+      "core.adb.install.INVALID_URI",
+      "安装失败：APK 路径含特殊字符，请把文件移到纯英文路径后重试。",
+    ),
+    INSTALL_FAILED_ALREADY_EXISTS: i18n.t(
+      "core.adb.install.ALREADY_EXISTS",
+      "安装失败：已存在同名应用且签名不同，请先卸载。",
+    ),
+    INSTALL_FAILED_UPDATE_INCOMPATIBLE: i18n.t(
+      "core.adb.install.UPDATE_INCOMPATIBLE",
+      "安装失败：与已安装版本签名不一致，请先卸载旧版。",
+    ),
+    INSTALL_FAILED_DEPRECATED_SDK_VERSION: i18n.t(
+      "core.adb.install.DEPRECATED_SDK_VERSION",
+      "安装失败：这是面向很老 Android 版本的应用（targetSdk 过低），Android 14 默认禁止安装。ApkStart 会自动用官方绕过参数重试。",
+    ),
+    INSTALL_FAILED_TEST_ONLY: i18n.t(
+      "core.adb.install.TEST_ONLY",
+      "安装失败：这是仅供测试的应用包，已自动加上测试包参数重试。",
+    ),
+    INSTALL_FAILED_MISSING_SHARED_LIBRARY: i18n.t(
+      "core.adb.install.MISSING_SHARED_LIBRARY",
+      "安装失败：应用依赖的设备特性（如特定厂商库）在当前运行时不存在。",
+    ),
+    INSTALL_FAILED_USER_RESTRICTION: i18n.t(
+      "core.adb.install.USER_RESTRICTION",
+      "安装失败：系统限制了安装，请重启运行时后重试。",
+    ),
+    INSTALL_FAILED_CONFLICTING_PROVIDER: i18n.t(
+      "core.adb.install.CONFLICTING_PROVIDER",
+      "安装失败：与已有应用的 ContentProvider 冲突，请卸载冲突应用。",
+    ),
+    INSTALL_FAILED_INTERNAL_ERROR: i18n.t(
+      "core.adb.install.INTERNAL_ERROR",
+      "安装失败：系统内部错误（常见于存储空间不足或开机未完成），请重启运行时后重试。",
+    ),
   };
   const msg = table[tag];
-  return msg ? `${msg}（${tag}）` : i18n.t('core.adb.install.fallback', '安装失败：{raw}', { raw: raw });
+  return msg
+    ? `${msg}（${tag}）`
+    : i18n.t("core.adb.install.fallback", "安装失败：{raw}", { raw: raw });
 }
 
 /** 把启动后的崩溃日志翻译成能看懂的原因 */
 function friendlyLaunchError(raw, pkg) {
-  const t = String(raw || '');
-  const appName = pkg || i18n.t('core.adb.app', '应用');
+  const t = String(raw || "");
+  const appName = pkg || i18n.t("core.adb.app", "应用");
   if (/DoBadTrampoline|libndk_translation|houdini|SIGABRT.*arm/i.test(t)) {
-    return i18n.t('core.adb.launch.trampoline', '{app} 启动后崩溃：ARM 翻译层与该应用的信号处理不兼容。ApkStart 会自动切换到 Android 14 兼容镜像后重试。', { app: appName });
+    return i18n.t(
+      "core.adb.launch.trampoline",
+      "{app} 启动后崩溃：ARM 翻译层与该应用的信号处理不兼容。ApkStart 会自动切换到 Android 14 兼容镜像后重试。",
+      { app: appName },
+    );
   }
-  if (/UnsatisfiedLinkError|dlopen failed|couldn't find "lib|\.so.*not found/i.test(t)) {
-    return i18n.t('core.adb.launch.missingLib', '{app} 启动后崩溃：缺少设备原生库（应用可能只提供 ARM 版本）。会自动切换到带 ARM 翻译层的兼容镜像后重试。', { app: appName });
+  if (
+    /UnsatisfiedLinkError|dlopen failed|couldn't find "lib|\.so.*not found/i.test(
+      t,
+    )
+  ) {
+    return i18n.t(
+      "core.adb.launch.missingLib",
+      "{app} 启动后崩溃：缺少设备原生库（应用可能只提供 ARM 版本）。会自动切换到带 ARM 翻译层的兼容镜像后重试。",
+      { app: appName },
+    );
   }
   if (/ClassNotFoundException|NoClassDefFoundError|AndroidRuntime/i.test(t)) {
-    return i18n.t('core.adb.launch.internal', '{app} 启动即崩溃（应用内部异常，可能与模拟器环境或缺少 Google 服务有关）。', { app: appName });
+    return i18n.t(
+      "core.adb.launch.internal",
+      "{app} 启动即崩溃（应用内部异常，可能与模拟器环境或缺少 Google 服务有关）。",
+      { app: appName },
+    );
   }
   if (/java\.lang\.SecurityException|Permission Denial/i.test(t)) {
-    return i18n.t('core.adb.launch.permission', '{app} 启动失败：系统拒绝了启动请求（权限或签名问题）。', { app: appName });
+    return i18n.t(
+      "core.adb.launch.permission",
+      "{app} 启动失败：系统拒绝了启动请求（权限或签名问题）。",
+      { app: appName },
+    );
   }
-  return i18n.t('core.adb.launch.unknown', '{app} 未能启动{detail}', { app: appName, detail: t ? `：${t.slice(0, 240)}` : i18n.t('core.adb.notAlive', '（进程未存活）') });
+  return i18n.t("core.adb.launch.unknown", "{app} 未能启动{detail}", {
+    app: appName,
+    detail: t
+      ? `：${t.slice(0, 240)}`
+      : i18n.t("core.adb.notAlive", "（进程未存活）"),
+  });
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -112,28 +191,39 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * state 列能区分 authorized / unauthorized / offline —— 开机探测据此快速自愈。
  */
 function parseDeviceState(text, serial) {
-  const lines = String(text || '').split(/\r?\n/).slice(1);
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .slice(1);
   for (const line of lines) {
-    const m = /^(\S+)\s+(unauthorized|offline|recovery|sideload|no\s+permissions|device)\b/i.exec(line.trim());
+    const m =
+      /^(\S+)\s+(unauthorized|offline|recovery|sideload|no\s+permissions|device)\b/i.exec(
+        line.trim(),
+      );
     if (!m) continue;
     if (serial && m[1] !== serial) continue;
-    const st = m[2].toLowerCase().replace(/\s+/g, '');
-    if (st === 'device') return 'device';
-    if (st === 'unauthorized' || st === 'nopermissions') return 'unauthorized';
+    const st = m[2].toLowerCase().replace(/\s+/g, "");
+    if (st === "device") return "device";
+    if (st === "unauthorized" || st === "nopermissions") return "unauthorized";
     return st; // offline / recovery / sideload
   }
-  return 'no-device';
+  return "no-device";
 }
 
 /** 从「允许 USB 调试」对话框未确认导致的 shell 报错里识别出 unauthorized */
 function isUnauthorizedError(raw) {
-  return /\bunauthorized\b|no permissions|confirm.*(allow|debug)/i.test(String(raw || ''));
+  return /\bunauthorized\b|no permissions|confirm.*(allow|debug)/i.test(
+    String(raw || ""),
+  );
 }
 
 /** 从 `pm path <pkg>` 的输出里取出每个 APK 的真实路径 */
 function parsePmPaths(text) {
-  return String(text || '').split(/\r?\n/).map((l) => l.trim())
-    .filter((l) => /^package:/.test(l)).map((l) => l.slice(8).trim()).filter(Boolean);
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => /^package:/.test(l))
+    .map((l) => l.slice(8).trim())
+    .filter(Boolean);
 }
 
 /** 已解析过的启动入口（adbPath|pkg → activity），10 分钟有效 */
@@ -144,11 +234,12 @@ const LAUNCHER_CACHE = new Map();
  * 安装前把 APK 复制到纯 ASCII 的临时目录，装完即删。
  */
 function stageApk(apkPath) {
-  const p = String(apkPath || '');
-  if (/^[\x20-\x7e]*$/.test(p) && p.length < 200) return { path: p, staged: false };
-  const dir = path.join(os.tmpdir(), 'apkstart-install');
+  const p = String(apkPath || "");
+  if (/^[\x20-\x7e]*$/.test(p) && p.length < 200)
+    return { path: p, staged: false };
+  const dir = path.join(os.tmpdir(), "apkstart-install");
   fs.mkdirSync(dir, { recursive: true });
-  const name = `${crypto.createHash('sha1').update(p).digest('hex').slice(0, 12)}.apk`;
+  const name = `${crypto.createHash("sha1").update(p).digest("hex").slice(0, 12)}.apk`;
   const target = path.join(dir, name);
   fs.copyFileSync(p, target);
   return { path: target, staged: true };
@@ -156,7 +247,11 @@ function stageApk(apkPath) {
 
 function unstage(staged) {
   if (!staged) return;
-  try { fs.rmSync(staged, { force: true }); } catch (_) { /* ignore */ }
+  try {
+    fs.rmSync(staged, { force: true });
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 /**
@@ -168,20 +263,23 @@ function unstage(staged) {
  * am start 直接取消（result code=-92），表现是「点图标只看到安卓桌面」。
  */
 function componentArg(pkg, activity) {
-  const a = String(activity || '').trim();
-  if (!a) return '';
-  if (a.includes('/')) return a;
+  const a = String(activity || "").trim();
+  if (!a) return "";
+  if (a.includes("/")) return a;
   return `${pkg}/${a}`;
 }
 
 /** 从 `cmd package resolve-activity --brief` 的输出里取出属于 pkg 的组件（容忍尾部空行/priority 行） */
 function parseResolvedActivity(pkg, out) {
-  const lines = String(out || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = String(out || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     const m = /^([\w.]+)\/([.\w$]+)$/.exec(lines[i]);
     if (m && m[1] === pkg) return `${m[1]}/${m[2]}`;
   }
-  return '';
+  return "";
 }
 
 /**
@@ -207,14 +305,17 @@ class AdbError extends Error {
  * 返回 null 表示输出不像 stat 结果（设备不支持）。
  */
 function parseStatList(text) {
-  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = String(text || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   if (!lines.length) return [];
   const rows = [];
   for (const l of lines) {
     const m = /^(\d{9,})\|(\d+)\|(.+)$/.exec(l);
     if (!m) continue;
-    const rel = m[3].replace(/^\.\//, '');
-    if (!rel || rel.endsWith('/')) continue;
+    const rel = m[3].replace(/^\.\//, "");
+    if (!rel || rel.endsWith("/")) continue;
     rows.push({ rel, size: Number(m[2]), mtime: Number(m[1]) * 1000 });
   }
   // 有输出但一行都解析不出来 → 说明不是 stat 格式
@@ -224,9 +325,9 @@ function parseStatList(text) {
 
 class AdbClient {
   constructor({ adbPath, serial }) {
-    this.adbPath = adbPath || 'adb';
-    this.serial = serial || '';
-    this._input = null;        // 常驻 `adb shell` 进程
+    this.adbPath = adbPath || "adb";
+    this.serial = serial || "";
+    this._input = null; // 常驻 `adb shell` 进程
     this._inputSeq = 0;
     this._waiters = new Map(); // id -> { resolve, reject, timer, token }
   }
@@ -234,32 +335,43 @@ class AdbClient {
   static resolveAdb(explicit, appRoot) {
     const candidates = [
       explicit,
-      appRoot && path.join(appRoot, 'tools', 'platform-tools', 'adb.exe'),
+      appRoot && path.join(appRoot, "tools", "platform-tools", "adb.exe"),
       ...COMMON_ADB_PATHS,
     ].filter(Boolean);
     for (const c of candidates) {
-      try { if (fs.existsSync(c)) return c; } catch (_) { /* ignore */ }
+      try {
+        if (fs.existsSync(c)) return c;
+      } catch (_) {
+        /* ignore */
+      }
     }
-    return 'adb'; // 交给 PATH
+    return "adb"; // 交给 PATH
   }
 
   _args(args, withSerial = true) {
     const a = [];
-    if (withSerial && this.serial) a.push('-s', this.serial);
+    if (withSerial && this.serial) a.push("-s", this.serial);
     return a.concat(args);
   }
 
   _adbEnv() {
-    const env = { ...process.env, ANDROID_ADB_SERVER_PORT: process.env.ANDROID_ADB_SERVER_PORT || '5044' };
+    const env = {
+      ...process.env,
+      ANDROID_ADB_SERVER_PORT: process.env.ANDROID_ADB_SERVER_PORT || "5044",
+    };
     // Play 商店镜像会强制 ADB 授权：host 的 adb server 与 guest 的 adbd 必须用同一把
     // adbkey。官方做法是 adb/emulator 共用 %USERPROFILE%\.android\adbkey{,.pub}，
     // emulator 启动时把 adbkey.pub 烤进 guest 的 /data/misc/adb/adb_keys。
     // 显式告诉 adb server 去哪里找公钥：某些环境 ANDROID_SDK_HOME / 绿色版运行时
     // 会让 adb 在别处找 key，于是每次冷启动都弹「允许 USB 调试」→ device unauthorized。
     if (!env.ADB_VENDOR_KEYS) {
-      const home = process.env.USERPROFILE || process.env.HOME || '';
-      const keyDir = path.join(home, '.android');
-      try { if (home && fs.existsSync(keyDir)) env.ADB_VENDOR_KEYS = keyDir; } catch (_) { /* ignore */ }
+      const home = process.env.USERPROFILE || process.env.HOME || "";
+      const keyDir = path.join(home, ".android");
+      try {
+        if (home && fs.existsSync(keyDir)) env.ADB_VENDOR_KEYS = keyDir;
+      } catch (_) {
+        /* ignore */
+      }
     }
     return env;
   }
@@ -267,32 +379,44 @@ class AdbClient {
   exec(args, { timeout = 30000, withSerial = true, binary = false } = {}) {
     return new Promise((resolve, reject) => {
       const finalArgs = this._args(args, withSerial);
-      execFile(this.adbPath, finalArgs, {
-        timeout,
-        maxBuffer: 64 * 1024 * 1024,
-        encoding: binary ? 'buffer' : 'utf8',
-        windowsHide: true,
-        // 与运行时模拟器共用专用 adb server 端口（默认 5044），与 5037 上的
-        // WSA / 第三方模拟器 adb 隔离，避免注册被反复踢掉导致设备 offline
-        env: this._adbEnv(),
-      }, (err, stdout, stderr) => {
-        if (err) {
-          // adb install 的失败原因写在 stdout 且退出码非 0；
-          // 旧版只看 stderr，导致用户永远只看到一句空泛的「失败」。
-          const text = [stdout, stderr, err.message].filter(Boolean).join('\n').trim();
-          const e = new AdbError(`adb ${finalArgs.join(' ')} 失败: ${text}`, stderr, err.code);
-          e.stdout = stdout;
-          e.raw = text;
-          return reject(e);
-        }
-        resolve({ stdout, stderr });
-      });
+      execFile(
+        this.adbPath,
+        finalArgs,
+        {
+          timeout,
+          maxBuffer: 64 * 1024 * 1024,
+          encoding: binary ? "buffer" : "utf8",
+          windowsHide: true,
+          // 与运行时模拟器共用专用 adb server 端口（默认 5044），与 5037 上的
+          // WSA / 第三方模拟器 adb 隔离，避免注册被反复踢掉导致设备 offline
+          env: this._adbEnv(),
+        },
+        (err, stdout, stderr) => {
+          if (err) {
+            // adb install 的失败原因写在 stdout 且退出码非 0；
+            // 旧版只看 stderr，导致用户永远只看到一句空泛的「失败」。
+            const text = [stdout, stderr, err.message]
+              .filter(Boolean)
+              .join("\n")
+              .trim();
+            const e = new AdbError(
+              `adb ${finalArgs.join(" ")} 失败: ${text}`,
+              stderr,
+              err.code,
+            );
+            e.stdout = stdout;
+            e.raw = text;
+            return reject(e);
+          }
+          resolve({ stdout, stderr });
+        },
+      );
     });
   }
 
   async shell(cmd, opts = {}) {
-    const { stdout } = await this.exec(['shell', cmd], opts);
-    return typeof stdout === 'string' ? stdout.trim() : stdout;
+    const { stdout } = await this.exec(["shell", cmd], opts);
+    return typeof stdout === "string" ? stdout.trim() : stdout;
   }
 
   /**
@@ -304,19 +428,28 @@ class AdbClient {
    */
   _inputSession() {
     const old = this._input;
-    if (old && old.exitCode === null && !old.killed && old.stdin && old.stdin.writable) return old;
+    if (
+      old &&
+      old.exitCode === null &&
+      !old.killed &&
+      old.stdin &&
+      old.stdin.writable
+    )
+      return old;
     if (old) this.disposeInput();
 
-    const p = spawn(this.adbPath, this._args(['shell'], true), {
-      stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: this._adbEnv(),
+    const p = spawn(this.adbPath, this._args(["shell"], true), {
+      stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
+      env: this._adbEnv(),
     });
     this._input = p;
-    let buf = '';
-    p.stdout.setEncoding('utf8');
-    p.stdout.on('data', (chunk) => {
+    let buf = "";
+    p.stdout.setEncoding("utf8");
+    p.stdout.on("data", (chunk) => {
       buf += chunk;
       let i;
-      while ((i = buf.indexOf('\n')) >= 0) {
+      while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i).trim();
         buf = buf.slice(i + 1);
         for (const [id, w] of this._waiters) {
@@ -331,12 +464,18 @@ class AdbClient {
         }
       }
     });
-    p.stderr.on('data', () => { /* 忽略：设备离线等信息由调用方兜底 */ });
-    p.stdin.on('error', () => { /* 断开时由 exit 统一清理 */ });
-    p.on('error', () => { this._failWaiters(new Error('adb shell 启动失败')); });
-    p.on('exit', () => {
+    p.stderr.on("data", () => {
+      /* 忽略：设备离线等信息由调用方兜底 */
+    });
+    p.stdin.on("error", () => {
+      /* 断开时由 exit 统一清理 */
+    });
+    p.on("error", () => {
+      this._failWaiters(new Error("adb shell 启动失败"));
+    });
+    p.on("exit", () => {
       if (this._input === p) this._input = null;
-      this._failWaiters(new Error('adb shell 已退出'));
+      this._failWaiters(new Error("adb shell 已退出"));
     });
     return p;
   }
@@ -351,8 +490,8 @@ class AdbClient {
 
   /** 执行一条白名单内的 input 命令；失败会回收会话，调用方可回退到一次性 adb */
   async input(cmd, { timeout = 4000 } = {}) {
-    const { isInputCommand } = require('./pointer');
-    if (!isInputCommand(cmd)) throw new Error('非法的输入命令');
+    const { isInputCommand } = require("./pointer");
+    if (!isInputCommand(cmd)) throw new Error("非法的输入命令");
     const p = this._inputSession();
     const id = ++this._inputSeq;
     const token = `__APKSTART_${id}__`;
@@ -360,7 +499,7 @@ class AdbClient {
       const timer = setTimeout(() => {
         this._waiters.delete(id);
         this.disposeInput();
-        reject(new Error('input 命令超时'));
+        reject(new Error("input 命令超时"));
       }, timeout);
       this._waiters.set(id, { resolve, reject, timer, token });
       try {
@@ -378,38 +517,56 @@ class AdbClient {
     this._input = null;
     for (const [, w] of this._waiters) {
       clearTimeout(w.timer);
-      w.reject(new Error('输入通道已关闭'));
+      w.reject(new Error("输入通道已关闭"));
     }
     this._waiters.clear();
     if (p) {
-      try { p.stdin.end(); } catch (_) { /* ignore */ }
-      try { p.kill(); } catch (_) { /* ignore */ }
+      try {
+        p.stdin.end();
+      } catch (_) {
+        /* ignore */
+      }
+      try {
+        p.kill();
+      } catch (_) {
+        /* ignore */
+      }
     }
   }
 
   async version() {
-    const { stdout } = await this.exec(['version'], { withSerial: false });
+    const { stdout } = await this.exec(["version"], { withSerial: false });
     const m = /version\s+([\d.]+)/i.exec(stdout);
     return m ? m[1] : stdout.trim();
   }
 
   async connect() {
-    if (!this.serial.includes(':')) return true;
+    if (!this.serial.includes(":")) return true;
     try {
-      await this.exec(['connect', this.serial], { withSerial: false, timeout: 15000 });
-    } catch (_) { /* 可能已连接 */ }
+      await this.exec(["connect", this.serial], {
+        withSerial: false,
+        timeout: 15000,
+      });
+    } catch (_) {
+      /* 可能已连接 */
+    }
     return this.isOnline();
   }
 
   async isOnline() {
     try {
-      const { stdout } = await this.exec(['get-state'], { timeout: 8000 });
-      return stdout.trim() === 'device';
+      const { stdout } = await this.exec(["get-state"], { timeout: 8000 });
+      return stdout.trim() === "device";
     } catch (_) {
       // get-state 在未指定 serial 时不可用，退化用 devices 列表
       try {
-        const { stdout } = await this.exec(['devices'], { withSerial: false, timeout: 8000 });
-        return stdout.split('\n').some((l) => l.startsWith(this.serial) && l.includes('device'));
+        const { stdout } = await this.exec(["devices"], {
+          withSerial: false,
+          timeout: 8000,
+        });
+        return stdout
+          .split("\n")
+          .some((l) => l.startsWith(this.serial) && l.includes("device"));
       } catch (_) {
         return false;
       }
@@ -423,23 +580,34 @@ class AdbClient {
    */
   async deviceState() {
     try {
-      const { stdout } = await this.exec(['devices'], { withSerial: false, timeout: 8000 });
+      const { stdout } = await this.exec(["devices"], {
+        withSerial: false,
+        timeout: 8000,
+      });
       return parseDeviceState(stdout, this.serial);
     } catch (_) {
-      return 'no-device';
+      return "no-device";
     }
   }
 
   async devices() {
-    const { stdout } = await this.exec(['devices', '-l'], { withSerial: false });
-    return stdout.split('\n').slice(1)
+    const { stdout } = await this.exec(["devices", "-l"], {
+      withSerial: false,
+    });
+    return stdout
+      .split("\n")
+      .slice(1)
       .map((l) => l.trim())
-      .filter((l) => l && l.includes('device') && !l.startsWith('*'))
+      .filter((l) => l && l.includes("device") && !l.startsWith("*"))
       .map((l) => {
         const parts = l.split(/\s+/);
-        return { serial: parts[0], state: parts[1], model: (l.match(/model:(\S+)/) || [])[1] || '' };
+        return {
+          serial: parts[0],
+          state: parts[1],
+          model: (l.match(/model:(\S+)/) || [])[1] || "",
+        };
       })
-      .filter((d) => d.state === 'device');
+      .filter((d) => d.state === "device");
   }
 
   /**
@@ -450,19 +618,26 @@ class AdbClient {
    *  - NO_MATCHING_ABIS 抛带 code 的错误，交给上层自动切换兼容镜像。
    */
   async install(apkPath) {
-    if (!fs.existsSync(apkPath)) throw new Error(i18n.t('core.adb.apkMissing', 'APK 不存在: {path}', { path: apkPath }));
+    if (!fs.existsSync(apkPath))
+      throw new Error(
+        i18n.t("core.adb.apkMissing", "APK 不存在: {path}", { path: apkPath }),
+      );
     const staged = stageApk(apkPath);
     const file = staged.path;
     const variants = [
       // -g 自动授予运行时权限，省掉应用里的授权弹窗；部分镜像不支持则自动降级去掉
-      ['install', '-r', '-t', '-g', '--bypass-low-target-sdk-block', file],
-      ['install', '-r', '-t', '--bypass-low-target-sdk-block', file],
-      ['install', '-r', '-t', file],
-      ['install', '-r', file],
+      ["install", "-r", "-t", "-g", "--bypass-low-target-sdk-block", file],
+      ["install", "-r", "-t", "--bypass-low-target-sdk-block", file],
+      ["install", "-r", "-t", file],
+      ["install", "-r", file],
     ];
-    let last = '';
+    let last = "";
     let timeout = 240000;
-    try { timeout = installTimeoutMs(fs.statSync(file).size); } catch (_) { /* 取不到大小就用默认值 */ }
+    try {
+      timeout = installTimeoutMs(fs.statSync(file).size);
+    } catch (_) {
+      /* 取不到大小就用默认值 */
+    }
     try {
       for (const args of variants) {
         try {
@@ -473,21 +648,30 @@ class AdbClient {
           }
           return stdout.trim();
         } catch (e) {
-          const raw = String(e.raw || e.stdout || e.message || '');
+          const raw = String(e.raw || e.stdout || e.message || "");
           last = raw;
-          const tag = (/INSTALL_[A-Z_]+/.exec(raw) || [])[0] || '';
+          const tag = (/INSTALL_[A-Z_]+/.exec(raw) || [])[0] || "";
 
-          if (tag === 'INSTALL_FAILED_NO_MATCHING_ABIS') {
+          if (tag === "INSTALL_FAILED_NO_MATCHING_ABIS") {
             const err = new Error(friendlyInstallError(raw));
-            err.code = 'NO_MATCHING_ABIS';
+            err.code = "NO_MATCHING_ABIS";
             err.raw = raw;
             throw err;
           }
           // 老 adb 不认新参数 / 测试包标记 → 换一种写法
-          if (/Unknown option|unrecognized option|Unknown command/i.test(raw)) continue;
-          if (tag === 'INSTALL_FAILED_TEST_ONLY' || tag === 'INSTALL_FAILED_DEPRECATED_SDK_VERSION') continue;
+          if (/Unknown option|unrecognized option|Unknown command/i.test(raw))
+            continue;
+          if (
+            tag === "INSTALL_FAILED_TEST_ONLY" ||
+            tag === "INSTALL_FAILED_DEPRECATED_SDK_VERSION"
+          )
+            continue;
           // 传输类错误（设备掉线、adb server 重启）重试一次
-          if (/device (not found|offline)|closed|protocol fault|no devices/i.test(raw)) {
+          if (
+            /device (not found|offline)|closed|protocol fault|no devices/i.test(
+              raw,
+            )
+          ) {
             // eslint-disable-next-line no-await-in-loop
             await sleep(1500);
             continue;
@@ -501,8 +685,13 @@ class AdbClient {
           // 没拿到明确错误码：最后一种写法再试
         }
       }
-      const err = new Error(friendlyInstallError(last || i18n.t('core.adb.install.noReason', '安装失败，未获得明确原因')));
-      err.code = (/INSTALL_[A-Z_]+/.exec(last) || [])[0] || 'INSTALL_UNKNOWN';
+      const err = new Error(
+        friendlyInstallError(
+          last ||
+            i18n.t("core.adb.install.noReason", "安装失败，未获得明确原因"),
+        ),
+      );
+      err.code = (/INSTALL_[A-Z_]+/.exec(last) || [])[0] || "INSTALL_UNKNOWN";
       err.raw = last;
       throw err;
     } finally {
@@ -512,30 +701,41 @@ class AdbClient {
 
   /** 拆分 APK（.apks / .xapk 解出来的多个分片）走 install-multiple */
   async installMultiple(apkPaths) {
-    if (!apkPaths || !apkPaths.length) throw new Error(i18n.t('core.adb.noSplits', '没有可安装的分片 APK'));
+    if (!apkPaths || !apkPaths.length)
+      throw new Error(i18n.t("core.adb.noSplits", "没有可安装的分片 APK"));
     const staged = apkPaths.map((p) => stageApk(p));
     const files = staged.map((s) => s.path);
-    const totalBytes = staged.reduce((n, s) => n + (fs.existsSync(s.path) ? fs.statSync(s.path).size : 0), 0);
+    const totalBytes = staged.reduce(
+      (n, s) => n + (fs.existsSync(s.path) ? fs.statSync(s.path).size : 0),
+      0,
+    );
     const timeout = installTimeoutMs(totalBytes);
     try {
-      for (const extra of [['-r', '-t', '--bypass-low-target-sdk-block'], ['-r', '-t']]) {
+      for (const extra of [
+        ["-r", "-t", "--bypass-low-target-sdk-block"],
+        ["-r", "-t"],
+      ]) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const { stdout } = await this.exec(['install-multiple', ...extra, ...files], { timeout });
-          if (/Failure|Error/i.test(stdout) && !/Success/i.test(stdout)) throw new Error(stdout);
+          const { stdout } = await this.exec(
+            ["install-multiple", ...extra, ...files],
+            { timeout },
+          );
+          if (/Failure|Error/i.test(stdout) && !/Success/i.test(stdout))
+            throw new Error(stdout);
           return stdout.trim();
         } catch (e) {
-          const raw = String(e.raw || e.stdout || e.message || '');
+          const raw = String(e.raw || e.stdout || e.message || "");
           if (/Unknown option|unrecognized option/i.test(raw)) continue;
           if (/INSTALL_FAILED_NO_MATCHING_ABIS/.test(raw)) {
             const err = new Error(friendlyInstallError(raw));
-            err.code = 'NO_MATCHING_ABIS';
+            err.code = "NO_MATCHING_ABIS";
             throw err;
           }
           throw new Error(friendlyInstallError(raw));
         }
       }
-      throw new Error(i18n.t('core.adb.splitFailed', '拆分 APK 安装失败'));
+      throw new Error(i18n.t("core.adb.splitFailed", "拆分 APK 安装失败"));
     } finally {
       staged.forEach((s) => unstage(s.staged ? s.path : null));
     }
@@ -543,10 +743,12 @@ class AdbClient {
 
   async uninstall(pkg) {
     try {
-      await this.exec(['uninstall', pkg], { timeout: 60000 });
+      await this.exec(["uninstall", pkg], { timeout: 60000 });
     } catch (e) {
       // 部分设备需要指定 user
-      await this.exec(['shell', 'pm', 'uninstall', '--user', '0', pkg], { timeout: 60000 });
+      await this.exec(["shell", "pm", "uninstall", "--user", "0", pkg], {
+        timeout: 60000,
+      });
     }
   }
 
@@ -565,20 +767,28 @@ class AdbClient {
     const paths = parsePmPaths(out);
     if (!paths.length) return false;
     // 分片 APK 全部要在；任一片丢了都启动不了。合并成一条 shell，省一次 adb 往返。
-    const checks = paths.map((p) => `[ -s "${p}" ]`).join(' && ');
-    const probe = await this.shell(`${checks} && echo __APKSTART_PRESENT__`, { timeout: 10000 }).catch(() => '');
+    const checks = paths.map((p) => `[ -s "${p}" ]`).join(" && ");
+    const probe = await this.shell(`${checks} && echo __APKSTART_PRESENT__`, {
+      timeout: 10000,
+    }).catch(() => "");
     return /__APKSTART_PRESENT__/.test(String(probe));
   }
 
   async listPackages() {
-    const out = await this.shell('pm list packages -3');
-    return out.split('\n').map((l) => l.replace('package:', '').trim()).filter(Boolean);
+    const out = await this.shell("pm list packages -3");
+    return out
+      .split("\n")
+      .map((l) => l.replace("package:", "").trim())
+      .filter(Boolean);
   }
 
   /** 从系统解析真正的启动 Activity（清单里解析不出来时的兜底） */
   /** 应用升级后入口可能变，解析前先把这个包从缓存里摘掉 */
   clearLauncherCache(pkg) {
-    if (!pkg) { LAUNCHER_CACHE.clear(); return; }
+    if (!pkg) {
+      LAUNCHER_CACHE.clear();
+      return;
+    }
     LAUNCHER_CACHE.delete(`${this.adbPath}|${pkg}`);
   }
 
@@ -590,14 +800,17 @@ class AdbClient {
     if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.value;
     try {
       const out = await this.shell(
-        `cmd package resolve-activity --brief ${pkg}`, { timeout: 10000 },
+        `cmd package resolve-activity --brief ${pkg}`,
+        { timeout: 10000 },
       );
       const comp = parseResolvedActivity(pkg, out);
       if (comp) {
         LAUNCHER_CACHE.set(key, { value: comp, at: Date.now() });
         return comp;
       }
-    } catch (_) { /* 落到 monkey */ }
+    } catch (_) {
+      /* 落到 monkey */
+    }
     return null;
   }
 
@@ -606,20 +819,24 @@ class AdbClient {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       // eslint-disable-next-line no-await-in-loop
-      const pid = await this.shell(`pidof ${pkg}`, { timeout: 6000 }).catch(() => '');
+      const pid = await this.shell(`pidof ${pkg}`, { timeout: 6000 }).catch(
+        () => "",
+      );
       if (String(pid).trim()) return { ok: true };
       // eslint-disable-next-line no-await-in-loop
       await sleep(1000);
     }
-    let crash = '';
+    let crash = "";
     try {
       crash = await this.shell(
-        `logcat -d -t 250 -v brief AndroidRuntime:E DEBUG:E libc:E 2>/dev/null | `
-        + `grep -i -E '${pkg}|FATAL|ndk_translation|SIGABRT|SIGSEGV|UnsatisfiedLink' | tail -n 30`,
+        `logcat -d -t 250 -v brief AndroidRuntime:E DEBUG:E libc:E 2>/dev/null | ` +
+          `grep -i -E '${pkg}|FATAL|ndk_translation|SIGABRT|SIGSEGV|UnsatisfiedLink' | tail -n 30`,
         { timeout: 12000 },
       );
-    } catch (_) { /* ignore */ }
-    const text = String(crash || '').trim();
+    } catch (_) {
+      /* ignore */
+    }
+    const text = String(crash || "").trim();
     // 没有崩溃日志时不能断言失败：部分大型应用首次启动要 20-40 秒
     return { ok: false, crash: text, uncertain: !text };
   }
@@ -629,45 +846,63 @@ class AdbClient {
    *   freeform 独立窗口 → 普通全屏 → monkey 兜底；
    * 每次都验证进程是否存活，崩溃时抓 logcat 并抛带 code 的错误供上层自动切镜像。
    */
-  async startApp(pkg, activity, { freeform = true, bounds = null, forceStop = false } = {}) {
+  async startApp(
+    pkg,
+    activity,
+    { freeform = true, bounds = null, forceStop = false } = {},
+  ) {
     if (forceStop) await this.forceStop(pkg);
     // 必须用系统解析出来的 LAUNCHER 入口，不能只用 APK 里解析到的主 Activity：
     // 很多应用（红果短剧等）的启动页才做真正的初始化，直接进主 Activity 会
     // 抛 "had you called RpcService.init"，表现为点开闪一下就没了。
-    const resolved = (await this.resolveLauncher(pkg).catch(() => '')) || activity;
+    const resolved =
+      (await this.resolveLauncher(pkg).catch(() => "")) || activity;
     // resolved 可能是完整组件（pkg/class），也可能只是类名（老 apps.json）；
     // 这里统一成 am start -n 要的完整组件，避免 pkg/pkg/class 被系统取消。
     const comp = componentArg(pkg, resolved);
     const intent = comp
-      ? ['-n', comp]
-      : ['-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', pkg];
-    const modes = freeform
-      ? [['--windowingMode', '5'], []]
-      : [[]];
-    let lastError = '';
+      ? ["-n", comp]
+      : [
+          "-a",
+          "android.intent.action.MAIN",
+          "-c",
+          "android.intent.category.LAUNCHER",
+          "-p",
+          pkg,
+        ];
+    const modes = freeform ? [["--windowingMode", "5"], []] : [[]];
+    let lastError = "";
 
     for (const mode of modes) {
-      const parts = ['am', 'start', ...mode, '--activity-clear-top', ...intent];
-      let out = '';
+      const parts = ["am", "start", ...mode, "--activity-clear-top", ...intent];
+      let out = "";
       try {
         // eslint-disable-next-line no-await-in-loop
-        out = await this.shell(parts.join(' '), { timeout: 20000 });
+        out = await this.shell(parts.join(" "), { timeout: 20000 });
       } catch (e) {
         lastError = String(e.message || e);
         continue;
       }
-      if (/Error|Exception/i.test(out)) { lastError = out; continue; }
+      if (/Error|Exception/i.test(out)) {
+        lastError = out;
+        continue;
+      }
 
       if (bounds) this.resizeTaskOfPackage(pkg, bounds).catch(() => {});
       // eslint-disable-next-line no-await-in-loop
       const alive = await this.waitAppAlive(pkg, 6000);
       if (alive.ok) return out;
-      if (alive.uncertain) return `${out}\n${i18n.t('core.adb.stillLoading', '（应用仍在加载中）')}`;
+      if (alive.uncertain)
+        return `${out}\n${i18n.t("core.adb.stillLoading", "（应用仍在加载中）")}`;
       lastError = alive.crash || lastError;
       // 崩溃日志明确指向 ARM 翻译层时不再重试，直接交给上层切换兼容镜像
-      if (/DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|dlopen failed/i.test(alive.crash || '')) {
+      if (
+        /DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|dlopen failed/i.test(
+          alive.crash || "",
+        )
+      ) {
         const err = new Error(friendlyLaunchError(alive.crash, pkg));
-        err.code = 'APP_CRASHED';
+        err.code = "APP_CRASHED";
         err.crash = alive.crash;
         throw err;
       }
@@ -676,7 +911,8 @@ class AdbClient {
     // monkey 兜底：部分镜像的 am start -a/-c/-p 解析不到 launcher
     try {
       const out = await this.shell(
-        `monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`, { timeout: 20000 },
+        `monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`,
+        { timeout: 20000 },
       );
       const alive = await this.waitAppAlive(pkg, 12000);
       if (alive.ok || alive.uncertain) return out;
@@ -686,21 +922,29 @@ class AdbClient {
       if (!lastError) lastError = String(e.message || e);
     }
 
-    if (!lastError) return 'started';
+    if (!lastError) return "started";
     const err = new Error(friendlyLaunchError(lastError, pkg));
-    err.code = 'APP_CRASHED';
+    err.code = "APP_CRASHED";
     err.crash = lastError;
     throw err;
   }
 
   async forceStop(pkg) {
-    try { await this.shell(`am force-stop ${pkg}`); } catch (_) { /* ignore */ }
+    try {
+      await this.shell(`am force-stop ${pkg}`);
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   async runningPackages() {
     try {
-      const out = await this.shell('dumpsys activity activities | grep -E "mResumedActivity|ResumedActivity"');
-      const pkgs = [...out.matchAll(/([a-zA-Z][\w.]+\/[.\w$]+)/g)].map((m) => m[1].split('/')[0]);
+      const out = await this.shell(
+        'dumpsys activity activities | grep -E "mResumedActivity|ResumedActivity"',
+      );
+      const pkgs = [...out.matchAll(/([a-zA-Z][\w.]+\/[.\w$]+)/g)].map(
+        (m) => m[1].split("/")[0],
+      );
       return [...new Set(pkgs)];
     } catch (_) {
       return [];
@@ -709,21 +953,25 @@ class AdbClient {
 
   async taskIdOfPackage(pkg) {
     try {
-      const out = await this.shell('dumpsys activity recents');
-      const blocks = out.split('Recent #');
+      const out = await this.shell("dumpsys activity recents");
+      const blocks = out.split("Recent #");
       for (const b of blocks) {
         if (!b.includes(pkg)) continue;
         const m = /taskId=(\d+)/.exec(b) || /^\d+/.exec(b);
         if (m) return Number(m[1] || m[0]);
       }
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
     return null;
   }
 
   async resizeTaskOfPackage(pkg, bounds) {
     const id = await this.taskIdOfPackage(pkg);
     if (!id) return false;
-    await this.shell(`am task resize ${id} ${bounds.left} ${bounds.top} ${bounds.right} ${bounds.bottom}`);
+    await this.shell(
+      `am task resize ${id} ${bounds.left} ${bounds.top} ${bounds.right} ${bounds.bottom}`,
+    );
     return true;
   }
 
@@ -732,41 +980,46 @@ class AdbClient {
     // 合成为一次 adb shell：4 次独立 execFile 在 Windows 上要 600ms+，
     // 而这段正好在「点开应用」的等待里。
     const out = await this.shell(
-      'settings put global enable_freeform_support 1 ; '
-      + 'settings put global force_resizable_activities 1 ; '
-      + 'settings put global development_settings_enabled 1 ; '
-      + 'settings get global enable_freeform_support',
+      "settings put global enable_freeform_support 1 ; " +
+        "settings put global force_resizable_activities 1 ; " +
+        "settings put global development_settings_enabled 1 ; " +
+        "settings get global enable_freeform_support",
       { timeout: 12000 },
-    ).catch(() => '0');
-    return String(out).trim().split(/\r?\n/).pop().trim() === '1';
+    ).catch(() => "0");
+    return String(out).trim().split(/\r?\n/).pop().trim() === "1";
   }
 
   async wmSize() {
-    const out = await this.shell('wm size');
-    const m = /(\d+)x(\d+)/.exec(out.split('\n').pop() || out);
+    const out = await this.shell("wm size");
+    const m = /(\d+)x(\d+)/.exec(out.split("\n").pop() || out);
     return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
   }
 
   async androidVersion() {
-    return (await this.shell('getprop ro.build.version.release').catch(() => '')).trim();
+    return (
+      await this.shell("getprop ro.build.version.release").catch(() => "")
+    ).trim();
   }
 
   async sdkInt() {
-    const v = await this.shell('getprop ro.build.version.sdk').catch(() => '0');
+    const v = await this.shell("getprop ro.build.version.sdk").catch(() => "0");
     return Number(v.trim()) || 0;
   }
 
   async screenshot() {
-    const { stdout } = await this.exec(['exec-out', 'screencap', '-p'], { binary: true, timeout: 20000 });
+    const { stdout } = await this.exec(["exec-out", "screencap", "-p"], {
+      binary: true,
+      timeout: 20000,
+    });
     return Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout);
   }
 
   async push(local, remote) {
-    await this.exec(['push', local, remote], { timeout: 180000 });
+    await this.exec(["push", local, remote], { timeout: 180000 });
   }
 
   async pull(remote, local) {
-    await this.exec(['pull', remote, local], { timeout: 180000 });
+    await this.exec(["pull", remote, local], { timeout: 180000 });
   }
 
   async shellMkdir(remote) {
@@ -775,23 +1028,34 @@ class AdbClient {
 
   async listRemote(remote) {
     const out = await this.shell(`ls -l "${remote}" 2>/dev/null`);
-    return String(out).split('\n').map((line) => {
-      const l = line.trim();
-      if (!l || l.startsWith('total ')) return null;
-      // Android 的 ls -l 有「含 group」和「不含 group」两种格式，日期可能是
-      // "2026-11-12 18:52" 或 "Nov 12 18:52"，用固定正则会全解析不出来。
-      // 权限位之后的第 2 个数字即文件大小，最后一段即文件名。
-      const parts = l.split(/\s+/);
-      if (parts.length < 6 || !/^[\-dl]/.test(parts[0])) return null;
-      const sizeIdx = parts.findIndex((p, i) => i >= 2 && /^\d+$/.test(p)
-        && /(\d{4}-\d{2}-\d{2}|^[A-Za-z]{3}$)/.test(parts[i + 1] || ''));
-      if (sizeIdx < 0) return null;
-      const size = Number(parts[sizeIdx]);
-      // 文件名在「时:分」token 之后（日期段 2-3 个 token，不固定）
-      const timeIdx = parts.findIndex((p, i) => i > sizeIdx && /^\d{1,2}:\d{2}(:\d{2})?$/.test(p));
-      const name = parts.slice((timeIdx >= 0 ? timeIdx : sizeIdx + 2) + 1).join(' ');
-      return name ? { isDir: parts[0][0] === 'd', size, name } : null;
-    }).filter(Boolean);
+    return String(out)
+      .split("\n")
+      .map((line) => {
+        const l = line.trim();
+        if (!l || l.startsWith("total ")) return null;
+        // Android 的 ls -l 有「含 group」和「不含 group」两种格式，日期可能是
+        // "2026-11-12 18:52" 或 "Nov 12 18:52"，用固定正则会全解析不出来。
+        // 权限位之后的第 2 个数字即文件大小，最后一段即文件名。
+        const parts = l.split(/\s+/);
+        if (parts.length < 6 || !/^[\-dl]/.test(parts[0])) return null;
+        const sizeIdx = parts.findIndex(
+          (p, i) =>
+            i >= 2 &&
+            /^\d+$/.test(p) &&
+            /(\d{4}-\d{2}-\d{2}|^[A-Za-z]{3}$)/.test(parts[i + 1] || ""),
+        );
+        if (sizeIdx < 0) return null;
+        const size = Number(parts[sizeIdx]);
+        // 文件名在「时:分」token 之后（日期段 2-3 个 token，不固定）
+        const timeIdx = parts.findIndex(
+          (p, i) => i > sizeIdx && /^\d{1,2}:\d{2}(:\d{2})?$/.test(p),
+        );
+        const name = parts
+          .slice((timeIdx >= 0 ? timeIdx : sizeIdx + 2) + 1)
+          .join(" ");
+        return name ? { isDir: parts[0][0] === "d", size, name } : null;
+      })
+      .filter(Boolean);
   }
 
   /**
@@ -800,9 +1064,11 @@ class AdbClient {
    * 返回 null 表示设备不支持 stat，调用方应退回 listRemote。
    */
   async listRemoteStat(remote) {
-    let out = '';
+    let out = "";
     try {
-      out = await this.shell(`cd "${remote}" 2>/dev/null && find . -type f -exec stat -c '%Y|%s|%n' {} + 2>/dev/null`);
+      out = await this.shell(
+        `cd "${remote}" 2>/dev/null && find . -type f -exec stat -c '%Y|%s|%n' {} + 2>/dev/null`,
+      );
     } catch (_) {
       return null;
     }
@@ -815,7 +1081,11 @@ class AdbClient {
   async clearData(pkg) {
     await this.shell(`pm clear ${pkg}`);
     // 数据清掉权限也一起掉了，必须让下次启动重新授，不能命中 permGranted 缓存
-    try { store.upsertApp({ package: pkg, permGranted: false }); } catch (_) { /* ignore */ }
+    try {
+      store.upsertApp({ package: pkg, permGranted: false });
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   /** 导出应用数据（Windows/调试版可用 run-as；否则走 adb backup 兜底） */
@@ -829,7 +1099,11 @@ class AdbClient {
   }
 
   async batteryOptimizeOff(pkg) {
-    try { await this.shell(`dumpsys deviceidle whitelist +${pkg}`); } catch (_) { /* ignore */ }
+    try {
+      await this.shell(`dumpsys deviceidle whitelist +${pkg}`);
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   /**
@@ -847,8 +1121,10 @@ class AdbClient {
     try {
       const rec = store.getApp(pkg);
       if (rec && rec.permGranted === true) return [];
-    } catch (_) { /* 读不到记录就当没授过 */ }
-    let dump = '';
+    } catch (_) {
+      /* 读不到记录就当没授过 */
+    }
+    let dump = "";
     try {
       dump = await this.shell(`dumpsys package ${pkg}`, { timeout: 20000 });
     } catch (_) {
@@ -858,11 +1134,14 @@ class AdbClient {
     let inRuntime = false;
     const denied = [];
     for (const line of lines) {
-      if (/^\s*runtime permissions:/.test(line)) { inRuntime = true; continue; }
+      if (/^\s*runtime permissions:/.test(line)) {
+        inRuntime = true;
+        continue;
+      }
       if (!inRuntime) continue;
       if (/^\s{0,6}\S/.test(line)) break; // 离开 runtime permissions 段
       const m = /^\s+([A-Za-z0-9_.]+):\s*granted=(\w+)/.exec(line);
-      if (m && m[2] === 'false') denied.push(m[1]);
+      if (m && m[2] === "false") denied.push(m[1]);
     }
     const granted = [];
     // 授权一次发完：pm grant 每条一次进程在 Windows 上要 150ms+，
@@ -870,14 +1149,23 @@ class AdbClient {
     const cmds = [];
     for (const p of denied) cmds.push(`pm grant ${pkg} ${p}`);
     // 特殊权限走 appops，否则仍然会弹窗
-    const ops = ['MANAGE_EXTERNAL_STORAGE', 'SYSTEM_ALERT_WINDOW', 'REQUEST_INSTALL_PACKAGES', 'WRITE_SETTINGS'];
+    const ops = [
+      "MANAGE_EXTERNAL_STORAGE",
+      "SYSTEM_ALERT_WINDOW",
+      "REQUEST_INSTALL_PACKAGES",
+      "WRITE_SETTINGS",
+    ];
     for (const op of ops) cmds.push(`cmd appops set ${pkg} ${op} allow`);
     if (cmds.length) {
-      await this.shell(cmds.join(' ; '), { timeout: 20000 }).catch(() => '');
+      await this.shell(cmds.join(" ; "), { timeout: 20000 }).catch(() => "");
       granted.push(...denied);
     }
     // 只有真的跑完命令才记标记：中途失败下次还会重试，不会留下「以为授过」的假状态
-    try { store.upsertApp({ package: pkg, permGranted: true }); } catch (_) { /* ignore */ }
+    try {
+      store.upsertApp({ package: pkg, permGranted: true });
+    } catch (_) {
+      /* ignore */
+    }
     return granted;
   }
 
@@ -892,30 +1180,30 @@ class AdbClient {
     // 以前是 7 条命令串行发，每条都要新起一个 adb 进程（Windows 上 150~250ms），
     // 合计 1~1.7 秒，全压在「点开应用」的等待里。合成一条 shell 后只剩一次往返。
     const cmds = [
-      'wm dismiss-keyguard',
-      'settings put global policy_control immersive.status=*',
-      'settings put secure immersive_mode_confirmations confirmed',
-      'settings put global window_animation_scale 0',
-      'settings put global transition_animation_scale 0',
-      'settings put global animator_duration_scale 0',
-      'settings put system screen_off_timeout 2147483647',
+      "wm dismiss-keyguard",
+      "settings put global policy_control immersive.status=*",
+      "settings put secure immersive_mode_confirmations confirmed",
+      "settings put global window_animation_scale 0",
+      "settings put global transition_animation_scale 0",
+      "settings put global animator_duration_scale 0",
+      "settings put system screen_off_timeout 2147483647",
       // 大屏任务栏：平板密度下 Pixel Launcher 会在底部常驻一条 Taskbar，
       // 盖住应用内容、按键挤在左下角（用户反馈的「按键错位」）。
       // 见 disableLauncherTaskbar()：这里每次启动都补一刀，幂等且只多一次往返。
-      'settings put global enable_taskbar 0',
+      "settings put global enable_taskbar 0",
       // 联网验证：安卓默认拿 connectivitycheck.gstatic.com 判断「是否真能上网」，
       // 国内连不上它，系统就一直给网络打「!」标记（已连接但无法访问互联网），
       // 部分应用据此自我判定离线、拒绝加载内容。换成国内返回 204 的端点。
       // 每次启动都写一次（幂等、单条 shell 里，几乎零成本），这样即使从旧快照
       // 恢复、或用户手动改过系统设置，也能自动纠正回来。
-      'settings put global captive_portal_http_url http://connect.rom.miui.com/generate_204',
-      'settings put global captive_portal_https_url https://connect.rom.miui.com/generate_204',
-      'settings put global captive_portal_mode 0',
+      "settings put global captive_portal_http_url http://connect.rom.miui.com/generate_204",
+      "settings put global captive_portal_https_url https://connect.rom.miui.com/generate_204",
+      "settings put global captive_portal_mode 0",
       // 注意：这里不要再写 wm user-rotation / accelerometer_rotation。
       // 方向由 setOrientation / resetDisplayOverrides 按当前横竖屏状态统一定，
       // 在这里写死 lock 0 会把横屏方向覆盖回竖屏（画面躺倒）。
     ];
-    await this.shell(cmds.join(' ; '), { timeout: 15000 }).catch(() => {});
+    await this.shell(cmds.join(" ; "), { timeout: 15000 }).catch(() => {});
     return true;
   }
 
@@ -925,12 +1213,18 @@ class AdbClient {
       await this.input(`input keyevent ${code}`);
     } catch (_) {
       // 运行时刚重启、常驻 shell 还没连上时，退回一次性 adb，不能把这次点击丢掉
-      await this.shell(`input keyevent ${code}`, { timeout: 6000 }).catch(() => {});
+      await this.shell(`input keyevent ${code}`, { timeout: 6000 }).catch(
+        () => {},
+      );
     }
   }
 
-  async keyBack() { return this._key(4); }
-  async keyForward() { return this._key(125); }
+  async keyBack() {
+    return this._key(4);
+  }
+  async keyForward() {
+    return this._key(125);
+  }
 
   /**
    * 切换「手机排版 / 平板排版」。
@@ -952,22 +1246,32 @@ class AdbClient {
       // 让系统设置里那个开关是「开」的。方向本身由下面的 wm user-rotation lock 0
       // + set-ignore-orientation-request 决定，不受传感器影响，所以不会乱转。
       // 用户可在设置 →「镜像自动旋转」关掉，回到旧的锁定 0 行为。
-      await this.shell(`settings put system accelerometer_rotation ${guestAutoRotate()}; wm size reset`, { timeout: 15000 });
+      await this.shell(
+        `settings put system accelerometer_rotation ${guestAutoRotate()}; wm size reset`,
+        { timeout: 15000 },
+      );
       // 方向锁 **0**（不是 1）。物理面板的方向已经由 hw.lcd.width/height 决定
       // （见 doctor.lcdFor），这里再锁 1 等于把横面板又转成竖逻辑空间，
       // 结果就是画面躺倒 90° —— 这正是「横屏没弄好」的直接原因。
-      await this.shell('wm user-rotation lock 0', { timeout: 15000 });
+      await this.shell("wm user-rotation lock 0", { timeout: 15000 });
       // 关键一步：红果这类应用自己声明了 portrait，系统会照办，于是
       // init=1280x720 的横面板被转成 cur=720x1280 的竖逻辑空间，画面又躺下。
       // 打开「忽略应用的屏幕方向请求」，系统才会按面板方向排版。
       // 竖屏模式下必须显式关掉，否则上一次横屏留下的 true 会让竖屏面板里
       // 显示横屏排版。API < 31 没有这个命令，失败忽略即可。
-      await this.shell(`wm set-ignore-orientation-request ${landscape ? 'true' : 'false'}`, { timeout: 15000 });
+      await this.shell(
+        `wm set-ignore-orientation-request ${landscape ? "true" : "false"}`,
+        { timeout: 15000 },
+      );
       // 打开 freeform / 忽略方向请求后，安卓会弹一次「See and do more」的引导框
       // （"Double-tap outside an app to reposition it…"）。它盖在应用上面，
       // 用户以为程序坏了。这里预先把它标记为已确认，再兜底按一次返回。
-      await this.shell('settings put secure freeform_mode_confirmations confirmed', { timeout: 10000 });
-      if (landscape) await this.shell('input keyevent KEYCODE_BACK', { timeout: 8000 });
+      await this.shell(
+        "settings put secure freeform_mode_confirmations confirmed",
+        { timeout: 10000 },
+      );
+      if (landscape)
+        await this.shell("input keyevent KEYCODE_BACK", { timeout: 8000 });
       await this.shell(`wm density ${tabletDensity()}`, { timeout: 15000 });
       return true;
     } catch (_) {
@@ -989,18 +1293,20 @@ class AdbClient {
    */
   async disableLauncherTaskbar() {
     try {
-      await this.shell('settings put global enable_taskbar 0', { timeout: 10000 });
+      await this.shell("settings put global enable_taskbar 0", {
+        timeout: 10000,
+      });
       // grep -c 命中 0 行时退出码是 1，补 || true 免得被当成命令失败
       const out = await this.shell(
         'dumpsys window windows | grep -c "Window #.*Taskbar" || true',
         { timeout: 12000 },
-      ).catch(() => '0');
+      ).catch(() => "0");
       const alive = parseInt(String(out).trim(), 10) || 0;
       if (alive > 0) {
         await this.shell(
-          'am force-stop com.google.android.apps.nexuslauncher; am force-stop com.android.launcher3',
+          "am force-stop com.google.android.apps.nexuslauncher; am force-stop com.android.launcher3",
           { timeout: 12000 },
-        ).catch(() => '');
+        ).catch(() => "");
       }
       return true;
     } catch (_) {
@@ -1019,7 +1325,10 @@ class AdbClient {
    * 判定：窗口列表里不再有 "Splash Screen" 记录，且焦点落在目标包上。
    * 超时返回 false，调用方照常收动画（不能因为判定失败把用户永远关在动画里）。
    */
-  async waitForAppFirstFrame(pkg, { timeoutMs = 12000, intervalMs = 350 } = {}) {
+  async waitForAppFirstFrame(
+    pkg,
+    { timeoutMs = 12000, intervalMs = 350 } = {},
+  ) {
     const t0 = Date.now();
     while (Date.now() - t0 < timeoutMs) {
       // 必须用 `dumpsys window`（WINDOW MANAGER 全量），不能用
@@ -1029,7 +1338,7 @@ class AdbClient {
       const out = await this.shell(
         'dumpsys window | grep -E "Splash Screen|mCurrentFocus" | head -8',
         { timeout: 8000 },
-      ).catch(() => '');
+      ).catch(() => "");
       const s = String(out);
       if (s.trim()) {
         const splashAlive = /Splash Screen/.test(s);
@@ -1050,11 +1359,19 @@ class AdbClient {
       // 缓存了 DisplayMetrics 的应用（墨读就是）会按旧密度算一遍 dp，画面缩成
       // 左上角一小块、右边一大片空白，也就是用户说的「墨读没有填满窗口」。
       // 现在在这里连同 size 一起重设，启动路径上不再有中途改密度。
-      await this.shell(`wm size reset; wm density ${tabletDensity()}`, { timeout: 15000 });
-      await this.shell(`settings put system accelerometer_rotation ${guestAutoRotate()}`, { timeout: 15000 });
+      await this.shell(`wm size reset; wm density ${tabletDensity()}`, {
+        timeout: 15000,
+      });
+      await this.shell(
+        `settings put system accelerometer_rotation ${guestAutoRotate()}`,
+        { timeout: 15000 },
+      );
       // 与 setOrientation 保持一致：面板方向说了算，逻辑方向锁 0。
-      await this.shell('wm user-rotation lock 0', { timeout: 15000 });
-      await this.shell(`wm set-ignore-orientation-request ${landscape ? 'true' : 'false'}`, { timeout: 15000 });
+      await this.shell("wm user-rotation lock 0", { timeout: 15000 });
+      await this.shell(
+        `wm set-ignore-orientation-request ${landscape ? "true" : "false"}`,
+        { timeout: 15000 },
+      );
       // 平板密度一设，Launcher 的任务栏就跟着起来（sw>=600dp）。它只在启动时
       // 读一次 enable_taskbar，所以这里除了写开关，还要在它已经起来时重启一次。
       await this.disableLauncherTaskbar();
@@ -1078,25 +1395,37 @@ class AdbClient {
    * @returns {Promise<{ok:boolean, installed?:boolean, ime?:string, reason?:string}>}
    */
   async ensureChineseIme(apkPath, { setDefault = true } = {}) {
-    const IME_PKG = 'com.android.inputmethod.pinyin';
-    const IME_ID = IME_PKG + '/.PinyinIME';
+    const IME_PKG = "com.android.inputmethod.pinyin";
+    const IME_ID = IME_PKG + "/.PinyinIME";
     // 组件名写死但校验存在：ime list -s 只列**已启用**的输入法，用它判断
     // 「装没装」会在刚安装完时误判为「服务未注册」，于是永远走不到 ime enable。
     // 正确做法是用 pkg 是否已安装来判断，组件名用 ime list -a 交叉确认。
     const pkgInstalled = async () => {
-      const out = await this.shell(`pm list packages ${IME_PKG}`, { timeout: 10000 }).catch(() => '');
-      return String(out).indexOf('package:' + IME_PKG) >= 0;
+      const out = await this.shell(`pm list packages ${IME_PKG}`, {
+        timeout: 10000,
+      }).catch(() => "");
+      return String(out).indexOf("package:" + IME_PKG) >= 0;
     };
     const findEnabledIme = async () => {
-      const out = await this.shell('ime list -s', { timeout: 10000 }).catch(() => '');
-      return String(out).split('\n').map((s) => s.trim()).find((s) => s.indexOf(IME_PKG) === 0) || '';
+      const out = await this.shell("ime list -s", { timeout: 10000 }).catch(
+        () => "",
+      );
+      return (
+        String(out)
+          .split("\n")
+          .map((s) => s.trim())
+          .find((s) => s.indexOf(IME_PKG) === 0) || ""
+      );
     };
     try {
       let installed = await pkgInstalled();
       let justInstalled = false;
       if (!installed) {
         if (!apkPath || !fs.existsSync(apkPath)) {
-          return { ok: false, reason: i18n.t('core.adb.ime.apkMissing', '输入法 APK 缺失') };
+          return {
+            ok: false,
+            reason: i18n.t("core.adb.ime.apkMissing", "输入法 APK 缺失"),
+          };
         }
         await this.install(apkPath);
         installed = true;
@@ -1110,12 +1439,18 @@ class AdbClient {
           await new Promise((r) => setTimeout(r, 800));
         }
       }
-      if (!installed) return { ok: false, justInstalled, reason: i18n.t('core.adb.ime.notRegistered', '输入法包未注册') };
+      if (!installed)
+        return {
+          ok: false,
+          justInstalled,
+          reason: i18n.t("core.adb.ime.notRegistered", "输入法包未注册"),
+        };
       // 启用 + 设为默认（secure settings 可写，不需要 root）。
       // 每次都执行：从旧快照恢复时 enabled 标记可能丢失，或用户手动换过默认输入法。
       const cmds = [`ime enable ${IME_ID}`];
-      if (setDefault) cmds.push(`settings put secure default_input_method ${IME_ID}`);
-      await this.shell(cmds.join(' ; '), { timeout: 12000 }).catch(() => '');
+      if (setDefault)
+        cmds.push(`settings put secure default_input_method ${IME_ID}`);
+      await this.shell(cmds.join(" ; "), { timeout: 12000 }).catch(() => "");
       const ime = await findEnabledIme();
       return { ok: !!ime, installed: justInstalled, ime: ime || IME_ID };
     } catch (e) {
@@ -1129,37 +1464,44 @@ class AdbClient {
    * "Failed to set property"），真正生效靠 emulator 启动时的 -prop 注入。
    * 这里做的是能做的部分：把应用级 locale 和时区设好，让界面立刻中文、时间正确。
    */
-  async ensureChineseLocale(locale = 'zh-CN') {
+  async ensureChineseLocale(locale = "zh-CN") {
     const cmds = [
-      'settings put system system_locales ' + locale,
-      'setprop persist.sys.timezone Asia/Shanghai',
+      "settings put system system_locales " + locale,
+      "setprop persist.sys.timezone Asia/Shanghai",
       // 24 小时制 + 中文常见的日期格式
-      'settings put system time_12_24 24',
+      "settings put system time_12_24 24",
     ];
-    await this.shell(cmds.join(' ; '), { timeout: 12000 }).catch(() => '');
+    await this.shell(cmds.join(" ; "), { timeout: 12000 }).catch(() => "");
     return true;
   }
 
   /** 当前逻辑分辨率（横屏切换后窗口要按它算宽高比） */
   async displaySize() {
     try {
-      const out = await this.shell('wm size', { timeout: 8000 });
+      const out = await this.shell("wm size", { timeout: 8000 });
       const o = /Override size:\s*(\d+)x(\d+)/.exec(out);
       if (o) return { w: Number(o[1]), h: Number(o[2]) };
       const p = /Physical size:\s*(\d+)x(\d+)/.exec(out);
       if (p) return { w: Number(p[1]), h: Number(p[2]) };
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
     return null;
   }
 
   /** 授权框还挂在最前面时（用户不在电脑前也能自愈），按返回键收掉 */
-  async dismissPermissionDialog() {    try {
-      const top = await this.shell('dumpsys activity activities', { timeout: 12000 });
+  async dismissPermissionDialog() {
+    try {
+      const top = await this.shell("dumpsys activity activities", {
+        timeout: 12000,
+      });
       if (/GrantPermissionsActivity|permissioncontroller/i.test(String(top))) {
-        await this.shell('input keyevent 4', { timeout: 6000 }).catch(() => {});
+        await this.shell("input keyevent 4", { timeout: 6000 }).catch(() => {});
         return true;
       }
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
     return false;
   }
 
@@ -1171,17 +1513,28 @@ class AdbClient {
     const w = Math.max(320, Math.round(Number(width) || 0));
     const h = Math.max(480, Math.round(Number(height) || 0));
     await this.shell(`wm size ${w}x${h}`);
-    if (density) await this.shell(`wm density ${Math.max(120, Math.min(640, Math.round(density)))}`);
+    if (density)
+      await this.shell(
+        `wm density ${Math.max(120, Math.min(640, Math.round(density)))}`,
+      );
     return { w, h };
   }
 
   async resetDisplaySize() {
-    await this.shell('wm size reset').catch(() => {});
-    await this.shell('wm density reset').catch(() => {});
+    await this.shell("wm size reset").catch(() => {});
+    await this.shell("wm density reset").catch(() => {});
   }
 }
 
 module.exports = {
-  AdbClient, AdbError, parseStatList, friendlyInstallError, friendlyLaunchError,
-  componentArg, parseResolvedActivity, parseDeviceState, isUnauthorizedError, parsePmPaths,
+  AdbClient,
+  AdbError,
+  parseStatList,
+  friendlyInstallError,
+  friendlyLaunchError,
+  componentArg,
+  parseResolvedActivity,
+  parseDeviceState,
+  isUnauthorizedError,
+  parsePmPaths,
 };
