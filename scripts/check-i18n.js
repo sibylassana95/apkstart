@@ -45,7 +45,8 @@ const files = [];
 const used = new Set();
 for (const file of files) {
   const src = fs.readFileSync(file, 'utf8');
-  for (const m of src.matchAll(/(?:i18n\.)?t\(\s*'([^']+)'/g)) used.add(m[1]);
+  // Le fichier adb.js a été reformatté avec des guillemets doubles : accepter les deux styles.
+  for (const m of src.matchAll(/(?:i18n\.)?t\(\s*(['"])([^'"]+)\1/g)) used.add(m[2]);
   for (const m of src.matchAll(/data-i18n(?:-title|-placeholder|-aria-label|-alt|-value)?="([^"]+)"/g)) used.add(m[1]);
 }
 

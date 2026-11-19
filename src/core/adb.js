@@ -1325,10 +1325,7 @@ class AdbClient {
    * 判定：窗口列表里不再有 "Splash Screen" 记录，且焦点落在目标包上。
    * 超时返回 false，调用方照常收动画（不能因为判定失败把用户永远关在动画里）。
    */
-  async waitForAppFirstFrame(
-    pkg,
-    { timeoutMs = 12000, intervalMs = 350 } = {},
-  ) {
+  async waitForAppFirstFrame(pkg, { timeoutMs = 12000, intervalMs = 350 } = {}) {
     const t0 = Date.now();
     while (Date.now() - t0 < timeoutMs) {
       // 必须用 `dumpsys window`（WINDOW MANAGER 全量），不能用
