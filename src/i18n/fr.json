@@ -19,8 +19,6 @@
   "settings.uiLanguage.zh": "简体中文 (Chinois)",
   "settings.uiLanguage.fr": "Français",
   "settings.uiLanguage.hint": "Langue des textes de l'interface. N'affecte pas la « langue du système » ci-dessous (langue interne d'Android).",
-  "settings.uiLanguage.changedTitle": "Langue de l'interface mise à jour",
-  "settings.uiLanguage.changedBody": "Appliquée immédiatement",
   "app.tagNotConnected": "Runtime non connecté",
   "settings.title": "Paramètres",
   "settings.done": "Terminé"

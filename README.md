@@ -1,4 +1,5 @@
 # ApkStart
+[Français](README.fr.md)
 
 <p align="center"><img src="docs/images/logo.png" alt="ApkStart Logo" width="160" /></p>
 
