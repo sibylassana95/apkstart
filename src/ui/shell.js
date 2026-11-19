@@ -3,6 +3,8 @@
 const api = window.apkstart;
 const $ = (id) => document.getElementById(id);
 
+window.I18nDom.apply(document);
+
 const btn = {
   rotate: $('btnRotate'),
   min: $('btnMin'),
@@ -33,7 +35,7 @@ window.addEventListener('keydown', (e) => {
 
 function applyState(s) {
   if (!s) return;
-  $('appName').textContent = s.label || '应用';
+  $('appName').textContent = s.label || api.i18n.t('windows.shell.app', '应用');
   $('bootName').textContent = s.label || '';
   const icon = s.iconUrl || '';
   if (icon) {

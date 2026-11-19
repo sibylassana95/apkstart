@@ -1,0 +1,21 @@
+{
+  "windows.splash.title": "Exécuteur d'applications Android sur Windows",
+  "windows.splash.preparing": "Préparation en cours…",
+  "windows.splash.firstRunTitle": "Première utilisation · Configuration automatique",
+  "windows.splash.firstRunItem1": "Téléchargement du moteur d'exécution Android (environ 200 Mo, une seule fois)",
+  "windows.splash.firstRunItem2": "Téléchargement de l'image système (environ 1,5 Go, une seule fois)",
+  "windows.splash.firstRunItem3": "Configuration de l'accélération matérielle et du réseau",
+  "windows.splash.firstRunItem4": "Une fois terminé, double-cliquez sur un APK ou une icône du bureau pour lancer l'application instantanément",
+  "windows.splash.firstRunBundledTitle": "Premier lancement · Préparation locale (aucune connexion requise)",
+  "windows.splash.firstRunBundledItem1": "Les composants d'exécution sont inclus dans le programme d'installation, aucun téléchargement",
+  "windows.splash.firstRunBundledItem2": "Extraction de l'image système vers le dossier utilisateur (environ 1 minute, une seule fois)",
+  "windows.splash.firstRunBundledItem3": "Préparation de l'accélération matérielle et du clavier chinois",
+  "windows.splash.firstRunBundledItem4": "Une fois terminé, double-cliquez sur un APK ou une icône du bureau pour lancer l'application instantanément",
+  "windows.splash.footer": "Propulsé par RoutineMiku · v",
+  "windows.shell.app": "Application",
+  "windows.shell.rotate": "Paysage / Portrait (Ctrl+R)",
+  "windows.shell.minimize": "Réduire",
+  "windows.shell.maximize": "Agrandir",
+  "windows.shell.close": "Fermer",
+  "windows.shell.booting": "Démarrage de l'environnement Android…"
+}

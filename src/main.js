@@ -2921,6 +2921,7 @@ if (!gotLock) {
         webPreferences: {
           preload: path.join(__dirname, 'splash-preload.js'),
           contextIsolation: true, nodeIntegration: false, sandbox: false,
+          additionalArguments: ['--apkstart-lang=' + i18n.getLang()],
         },
       });
       // 用 screen-saver 级别确保不被模拟器窗口盖住（之前 alwaysOnTop 默认 level

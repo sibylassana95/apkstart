@@ -1,7 +1,13 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
+const i18n = require('./i18n');
 
 contextBridge.exposeInMainWorld('apkstartSplash', {
+  i18n: {
+    getLang: () => i18n.getLang(),
+    setLang: (l) => i18n.setLang(l),
+    t: (k, d, p) => i18n.t(k, d, p),
+  },
   version: () => ipcRenderer.invoke('splash:version'),
   isFirstRun: () => ipcRenderer.invoke('splash:isFirstRun'),
   // 运行组件是随包带来的（完整版 / 商店 MSIX 版）还是需要联网下载（轻量版）。

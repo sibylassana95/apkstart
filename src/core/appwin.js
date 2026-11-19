@@ -12,6 +12,7 @@ const path = require('path');
 const { hookOptions } = require('./pointer');
 const store = require('./store');
 const { physicalRect } = require('./geometry');
+const i18n = require('../i18n');
 
 const TITLEBAR_H = 38;
 /**
@@ -181,6 +182,7 @@ class AppWindow {
         sandbox: false,
         spellcheck: false,
         backgroundThrottling: false,
+        additionalArguments: ['--apkstart-lang=' + i18n.getLang()],
       },
     });
 
