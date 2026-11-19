@@ -1,0 +1,14 @@
+{
+  "overview": { "id": "overview", "titleZh": "使用手册 · 目录", "titleFr": "", "anchor": "overview" },
+  "accel": { "id": "accel", "titleZh": "未启用硬件加速 / 开机很慢", "titleFr": "", "anchor": "accel" },
+  "install": { "id": "install", "titleZh": "安装失败（INSTALL_FAILED_*）", "titleFr": "", "anchor": "install-failed" },
+  "arm": { "id": "arm", "titleZh": "ARM 转译层 / ARM 应用装不上", "titleFr": "", "anchor": "arm-translation" },
+  "adb": { "id": "adb", "titleZh": "adb 未授权（允许 USB 调试）", "titleFr": "", "anchor": "adb-unauthorized" },
+  "startup": { "id": "startup", "titleZh": "打不开 / 带旋转按钮的窗口", "titleFr": "", "anchor": "startup" },
+  "other": { "id": "other", "titleZh": "其它启动类问题速查表", "titleFr": "", "anchor": "other" },
+  "sound": { "id": "sound", "titleZh": "应用没有声音 / 声音很小", "titleFr": "", "anchor": "sound" },
+  "diagnose": { "id": "diagnose", "titleZh": "内置手册与自动教程", "titleFr": "", "anchor": "diagnose" },
+  "settings": { "id": "settings", "titleZh": "设置页导航", "titleFr": "", "anchor": "settings" },
+  "storage": { "id": "storage", "titleZh": "数据与目录说明", "titleFr": "", "anchor": "storage" },
+  "network": { "id": "network", "titleZh": "自动检测与网络修复", "titleFr": "", "anchor": "network" }
+}

@@ -36,6 +36,7 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 const DEFAULT_SETTINGS = {
   adbPath: '',
+  uiLanguage: 'zh-CN',   // 界面语言：zh-CN / fr（不影响 engine.locale 这个「系统语言」）
   device: '127.0.0.1:5555',
   /**
    * 驱动（兼容补丁）扩展：用户自己写的 JSON 补丁放在数据目录的 drivers/ 下。

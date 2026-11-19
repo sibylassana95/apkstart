@@ -39,7 +39,7 @@ function relTime(ts) {
   if (d < 3600000) return `${Math.floor(d / 60000)} 分钟前`;
   if (d < 86400000) return `${Math.floor(d / 3600000)} 小时前`;
   if (d < 86400000 * 30) return `${Math.floor(d / 86400000)} 天前`;
-  return new Date(ts).toLocaleDateString('zh-CN');
+  return new Date(ts).toLocaleDateString(api.i18n.getLang() === 'fr' ? 'fr-FR' : 'zh-CN');
 }
 
 /**
@@ -1085,6 +1085,7 @@ function fillSettings(s) {
   if ($('setDataGB')) $('setDataGB').value = String(Number(eng.dataPartitionGB || 0));
   if ($('setFastDns')) $('setFastDns').checked = eng.fastDns !== false;
   if ($('setLocale')) $('setLocale').value = eng.locale || 'zh-CN';
+  if ($('setUiLanguage')) $('setUiLanguage').value = s.uiLanguage || 'zh-CN';
   if ($('setChineseIme')) $('setChineseIme').checked = eng.chineseIme !== false;
   if ($('setKeepSnapshot')) $('setKeepSnapshot').checked = eng.keepSnapshot !== false;
   $('setDisplayMode').value = d.mode === 'fullscreen' ? 'fullscreen' : 'window';
@@ -1680,6 +1681,23 @@ function bindSettings() {
     $('setLocale').addEventListener('change', async (e) => {
       state.settings = await api.setSettings({ engine: { locale: e.target.value } });
       toast({ title: '系统语言已更新', body: '下次重启安卓运行时后生效', type: 'ok' });
+    });
+  }
+  if ($('setUiLanguage')) {
+    $('setUiLanguage').addEventListener('change', async (e) => {
+      const lang = e.target.value;
+      state.settings = await api.setSettings({ uiLanguage: lang });
+      api.i18n.setLang(lang);
+      window.I18nDom.apply(document);
+      // 刷新已渲染的动态视图，让它们跟随界面语言。
+      if (typeof renderGrid === 'function') renderGrid();
+      if (typeof updateStats === 'function') updateStats();
+      if (typeof refreshStatus === 'function') refreshStatus();
+      toast({
+        title: api.i18n.t('settings.uiLanguage.changedTitle', '界面语言已更新'),
+        body: api.i18n.t('settings.uiLanguage.changedBody', '立即生效'),
+        type: 'ok',
+      });
     });
   }
   if ($('setChineseIme')) {
@@ -2469,6 +2487,8 @@ async function init() {
   bindAndroid();
   bindWelcome();
   state.settings = await api.getSettings();
+  api.i18n.setLang(state.settings.uiLanguage || 'zh-CN');
+  window.I18nDom.apply(document);
   await refreshStatus();
   await refreshApps();
   refreshAndroid();

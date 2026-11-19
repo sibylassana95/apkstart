@@ -31,7 +31,7 @@
       <svg viewBox="0 0 48 48" width="22" height="22"><use href="#brandMark"/></svg>
     </div>
     <span class="brand-name">ApkStart</span>
-    <span class="brand-tag" id="engineTag">未连接运行时</span>
+    <span class="brand-tag" id="engineTag" data-i18n="app.tagNotConnected">未连接运行时</span>
   </div>
   <div class="titlebar-spacer"></div>
   <div class="titlebar-actions">
@@ -139,7 +139,7 @@
 <div class="modal-mask" id="settingsMask">
   <div class="modal">
     <header class="modal-head">
-      <h2>设置</h2>
+      <h2 data-i18n="settings.title">设置</h2>
       <div class="set-search-wrap">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="setSearch" class="set-search" type="search" autocomplete="off" placeholder="搜索设置项：横屏 / 内存 / 代理 / 快照…" />
@@ -195,6 +195,14 @@
     <div class="modal-body" id="settingsBody">
       <div class="group" id="runtimeGroup" data-cat="basic">
         <div class="group-title">运行时与环境</div>
+        <div class="field">
+          <label data-i18n="settings.uiLanguage.label">界面语言</label>
+          <select id="setUiLanguage">
+            <option value="zh-CN" data-i18n="settings.uiLanguage.zh">简体中文</option>
+            <option value="fr" data-i18n="settings.uiLanguage.fr">Français</option>
+          </select>
+          <span class="sub" data-i18n="settings.uiLanguage.hint">界面文字的语言；不影响下方「系统语言」（安卓系统内部的语言）。</span>
+        </div>
         <div class="field">
           <label>运行状态</label>
           <div class="row" style="align-items:center;">
@@ -918,11 +926,12 @@
     </div>
     <footer class="modal-foot">
       <span class="inline-note">设置修改后立即生效</span>
-      <button class="btn primary" id="btnDoneSettings">完成</button>
+      <button class="btn primary" id="btnDoneSettings" data-i18n="settings.done">完成</button>
     </footer>
   </div>
 </div>
 
+<script src="i18n-dom.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

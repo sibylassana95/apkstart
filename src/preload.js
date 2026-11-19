@@ -1,9 +1,18 @@
 'use strict';
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const i18n = require('./i18n');
 
 const invoke = (channel, payload) => ipcRenderer.invoke(channel, payload);
 
 contextBridge.exposeInMainWorld('apkstart', {
+  // 界面多语言：t() 是同步的，contextBridge 可以直接代理同步函数
+  i18n: {
+    supported: i18n.supported,
+    getLang: () => i18n.getLang(),
+    setLang: (lang) => i18n.setLang(lang),
+    t: (key, defaultZh, params) => i18n.t(key, defaultZh, params),
+  },
+
   info: () => invoke('app:info'),
   listApps: () => invoke('apps:list'),
   pickApk: () => invoke('apk:pick'),

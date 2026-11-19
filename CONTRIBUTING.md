@@ -27,7 +27,7 @@ electron . --smoke test\shot.png
 - 渲染层是原生 HTML/CSS/JS，不使用前端框架。
 - 与安卓侧交互一律走 `src/core/adb.js`，不要在各处直接拼 adb 命令。
 - 主进程与渲染进程之间只通过 `preload.js` 暴露的白名单通道通信，保持 `contextIsolation` 开启。
-- 注释与 UI 文案使用中文，标识符使用英文。
+- 注释使用中文，标识符使用英文；**面向用户的界面文案一律走 `src/i18n` 的 `t(key, 默认中文)` 机制**（先写中文默认值，再在 `src/i18n/fr.json` 补法语），不要在 HTML / JS 里直接写死多语言文案。详见 [docs/I18N.md](docs/I18N.md)。
 
 ## 测试约定
 

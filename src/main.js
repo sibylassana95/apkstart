@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const store = require('./core/store');
+const i18n = require('./i18n');
 const { Runtime } = require('./core/engine');
 const { Installer } = require('./core/installer');
 const { Sharer } = require('./core/sharer');
@@ -230,6 +231,8 @@ const ICON_PNG = loadBrandIcon().toPNG();
 
 let mainWindow = null;
 let tray = null;
+// buildTray() 里的菜单刷新闭包：切界面语言时只重建菜单，不新建第二个 Tray
+let trayRefresh = null;
 let runtime = null;
 // 「哪些窗口算我们的」由 whenReady 里赋值（见 agentScope）。放模块级是因为
 // runLaunch / 预热定时器都早于那段代码定义，闭包里的 const 在它们的作用域外看不到。
@@ -844,6 +847,12 @@ function createWindow({ show = true } = {}) {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
+  // 让 CSS 的 :lang() 选择器跟随界面语言（仅主窗口；其它窗口留给后续阶段）
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript(
+      'document.documentElement.lang = ' + JSON.stringify(i18n.getLang()) + '; void 0;'
+    ).catch(() => {});
+  });
   if (show) mainWindow.once('ready-to-show', () => mainWindow.show());
 
   // 冒烟测试时把渲染进程的报错打到 stdout：界面空白、按钮点了没反应，
@@ -1069,15 +1078,17 @@ function buildTray() {
       ? ((store.getApp(currentAppPkg) || {}).label || currentAppPkg)
       : '';
     const menu = Menu.buildFromTemplate([
-      { label: '打开 ApkStart', click: () => showWindow() },
-      { label: '使用手册', click: () => openManual({ topic: 'overview', reason: 'tray' }) },
+      { label: i18n.t('tray.open', '打开 ApkStart'), click: () => showWindow() },
+      { label: i18n.t('tray.manual', '使用手册'), click: () => openManual({ topic: 'overview', reason: 'tray' }) },
       { type: 'separator' },
       ...(apps.length
         ? apps.map((a) => ({ label: a.label, click: () => runLaunch(a.package) }))
-        : [{ label: '还没有安装应用', enabled: false }]),
+        : [{ label: i18n.t('tray.noApps', '还没有安装应用'), enabled: false }]),
       { type: 'separator' },
       {
-        label: hasRunning ? `关闭当前应用（${runningLabel}）` : '关闭当前应用',
+        label: hasRunning
+          ? i18n.t('tray.closeAppNamed', '关闭当前应用（{name}）', { name: runningLabel })
+          : i18n.t('tray.closeApp', '关闭当前应用'),
         enabled: !!hasRunning,
         click: () => {
           const pkg = currentAppPkg;
@@ -1087,19 +1098,25 @@ function buildTray() {
         },
       },
       {
-        label: wantLandscapeFor(currentAppPkg) ? '切回竖屏（需重启运行时）' : '切换横屏（需重启运行时）',
+        label: wantLandscapeFor(currentAppPkg)
+          ? i18n.t('tray.toPortrait', '切回竖屏（需重启运行时）')
+          : i18n.t('tray.toLandscape', '切换横屏（需重启运行时）'),
         enabled: !!currentAppPkg,
         click: () => { rotateCurrentApp().catch(() => {}); },
       },
       {
-        label: displaySettings().mode === 'fullscreen' ? '切回竖屏窗口' : '全屏（自适应屏幕）',
+        label: displaySettings().mode === 'fullscreen'
+          ? i18n.t('tray.backToWindow', '切回竖屏窗口')
+          : i18n.t('tray.fullscreen', '全屏（自适应屏幕）'),
         click: () => { toggleDisplayMode(); },
       },
-      { label: '重建桌面/开始菜单快捷方式', click: () => { installer.ensureShortcuts().catch(() => {}); } },
-      { label: '同步共享目录', click: () => sharer.sync() },
-      { label: '设置', click: () => { showWindow(); send('ui:navigate', 'settings'); } },
+      { label: i18n.t('tray.rebuildShortcuts', '重建桌面/开始菜单快捷方式'), click: () => { installer.ensureShortcuts().catch(() => {}); } },
+      { label: i18n.t('tray.syncShared', '同步共享目录'), click: () => sharer.sync() },
+      { label: i18n.t('tray.settings', '设置'), click: () => { showWindow(); send('ui:navigate', 'settings'); } },
       {
-        label: updateInfo && updateInfo.hasUpdate ? `发现新版本 ${updateInfo.tag}` : '检查更新',
+        label: updateInfo && updateInfo.hasUpdate
+          ? i18n.t('tray.newVersion', '发现新版本 {tag}', { tag: updateInfo.tag })
+          : i18n.t('tray.checkUpdate', '检查更新'),
         click: async () => {
           showWindow();
           send('ui:navigate', 'settings');
@@ -1123,7 +1140,7 @@ function buildTray() {
       },
       { type: 'separator' },
       {
-        label: '退出',
+        label: i18n.t('tray.quit', '退出'),
         click: async () => {
           try { appWin.close({ keepApp: true }); } catch (_) { /* ignore */ }
           quitting = true;
@@ -1132,8 +1149,11 @@ function buildTray() {
       },
     ]);
     tray.setContextMenu(menu);
+    // tooltip 也跟着界面语言走（切语言时 refresh 会重跑这段）
+    tray.setToolTip(i18n.t('tray.tooltip', 'ApkStart — 安卓应用运行器'));
   };
-  tray.setToolTip('ApkStart — 安卓应用运行器');
+  // 记住刷新闭包：切语言时只重建菜单，不新建第二个 Tray
+  trayRefresh = refresh;
   // Windows 托盘的惯例是单击就打开主窗口（双击当然也可以）。
   // 之前只绑了 double-click，用户单击没反应，会以为托盘图标坏了。
   // 右键才出菜单，所以这里单击直接 showWindow 不会和菜单冲突。
@@ -1141,6 +1161,11 @@ function buildTray() {
   tray.on('double-click', () => showWindow());
   refresh();
   setInterval(refresh, 5000).unref?.();
+}
+
+// 切界面语言后原地重建托盘菜单（tray 没建好时静默跳过）
+function refreshTrayMenu() {
+  try { trayRefresh && trayRefresh(); } catch (_) { /* ignore */ }
 }
 
 // ---------------- 核心动作 ----------------
@@ -1709,6 +1734,10 @@ function registerIpc() {
   ipcMain.handle('settings:set', (_e, rawPatch) => {
     const patch = sanitizeResourcePatch(rawPatch);
     const next = store.saveSettings(patch);
+    if (patch && patch.uiLanguage !== undefined) {
+      i18n.setLang(patch.uiLanguage);
+      refreshTrayMenu();
+    }
     if (patch && patch.autoStart !== undefined) applyAutoStart();
     if (patch && patch.display && appWin && appWin.isOpen) {
       // 竖屏基准尺寸变了：只影响后续打开的窗口大小，不打断正在跑的应用
@@ -3058,6 +3087,8 @@ if (!gotLock) {
     // 提前拉起，别等到真正要藏窗口的那一刻才开始等。
     winAgent.ensure().then(() => armAgent(winAgent)).catch(() => {});
 
+    // 界面语言必须先于窗口/托盘初始化，保证首屏文案和菜单就用用户选的语言
+    i18n.setLang(store.getSettings().uiLanguage || 'zh-CN');
     registerIpc();
     createWindow({ show: !parseArgs(process.argv).silent });
     buildTray();
